@@ -26,7 +26,6 @@
  */
 #include "general.h"
 #include "gdb_if.h"
-#include "version.h"
 #include "adiv5.h"
 #include "stlinkv2.h"
 #include "exception.h"

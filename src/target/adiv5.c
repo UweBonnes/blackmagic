@@ -609,8 +609,8 @@ adiv5_ap_read(ADIv5_AP_t *ap, uint16_t addr)
 	ret = adiv5_dp_read(ap->dp, addr);
 	return ret;
 }
-void  __attribute__((weak))
-adiv5_mem_write(ADIv5_AP_t *ap, uint32_t dest, const void *src, size_t len)
+
+void adiv5_mem_write(ADIv5_AP_t *ap, uint32_t dest, const void *src, size_t len)
 {
 	enum align align = MIN(ALIGNOF(dest), ALIGNOF(len));
 	adiv5_mem_write_sized(ap, dest, src, len, align);
