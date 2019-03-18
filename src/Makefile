@@ -102,8 +102,8 @@ all_platforms:
 	mkdir -p artifacts/$(shell git describe --always) ;\
 	echo "<html><body><ul>" > artifacts/index.html ;\
 	for i in platforms/*/Makefile.inc ; do \
-		export DIRNAME=$(shell dirname $$i ;\
-		export PROBE_HOST=$(shell basename $$DIRNAME) ;\
+		export DIRNAME=`dirname $$i` ;\
+		export PROBE_HOST=`basename $$DIRNAME` ;\
 		export CFLAGS=-Werror ;\
 		echo "Building for hardware platform: $$PROBE_HOST" ;\
 		$(MAKE) $(MAKEFLAGS) clean ;\
@@ -120,7 +120,6 @@ all_platforms:
 command.c: include/version.h
 
 include/version.h: FORCE
-	$(Q)echo "  GIT     include/version.h"
-	$(Q)echo "#define FIRMWARE_VERSION \"$(shell git describe --always --dirty)\"" > $@
-
+	$(Q)echo " GIT include/version.h"
+	$(Q)echo #define FIRMWARE_VERSION "$(shell git describe --always --dirty)" > $@
 -include *.d
