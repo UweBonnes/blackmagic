@@ -1,5 +1,6 @@
 TARGET=blackmagic_stlinkv2
 SYS = $(shell $(CC) -dumpmachine)
+VERS = $(shell git describe --always --dirty)
 CFLAGS += -DLIBFTDI  -DSTLINKV2 -DJTAG_HL
 CFLAGS +=-I ./target
 LDFLAGS += -lusb-1.0
