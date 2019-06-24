@@ -485,6 +485,7 @@ void adiv5_dp_init(ADIv5_DP_t *dp)
 		DEBUG("TARGETID %08" PRIx32 "\n", dp->targetid);
 	}
 	/* Probe for APs on this DP */
+	ADIv5_AP_t *ctl_ap = NULL;
 	for(int i = 0; i < 256; i++) {
 		ADIv5_AP_t *ap = NULL;
 		if (adiv5_ap_setup(i))
@@ -495,6 +496,18 @@ void adiv5_dp_init(ADIv5_DP_t *dp)
 				return;
 			else
 				continue;
+		}
+		if (i == 0) {
+			unsigned int identity = ap->idr & 0xff;
+			switch (identity) {
+			case 0x11: /* M3/M4 */
+			case 0x21: /* M0 */
+			case 0x31: /* M0+ */
+			case 0x01: /* M7 */
+				if (!cortexm_prepare(ap))
+					return;
+				ctl_ap = ap;
+			}
 		}
 		extern void kinetis_mdm_probe(ADIv5_AP_t *);
 		kinetis_mdm_probe(ap);
@@ -524,6 +537,8 @@ void adiv5_dp_init(ADIv5_DP_t *dp)
 			probed = true;
 		}
 	}
+	if (ctl_ap)
+		cortexm_release(ctl_ap);
 	adiv5_dp_unref(dp);
 }
 

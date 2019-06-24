@@ -242,6 +242,89 @@ static void cortexm_priv_free(void *priv)
 	free(priv);
 }
 
+/*
+ * Prepare Cortex M for reading the ROM table.
+ *
+ * Reading the ROM Table often fails when the target is not haltet.
+ *
+ * Try to halt target as as soon as possible, as probe when reading
+ * some none-cortex-core register often fail anyways and so we must
+ * force halt for probing otherwise.
+ *
+ * E.g. F7 can not read ROM table under reset!
+ *
+ */
+bool cortexm_prepare(ADIv5_AP_t *ap)
+{
+	if (platform_srst_get_val()) {
+		/* Release from reset and halt on Reset vector*/
+		ap->srst = true;
+		adiv5_mem_read(ap, &ap->demcr, CORTEXM_DEMCR, sizeof(ap->demcr));
+		/* Default vectors to catch */
+		uint32_t demcr = CORTEXM_DEMCR_TRCENA | CORTEXM_DEMCR_VC_HARDERR |
+			CORTEXM_DEMCR_VC_CORERESET;
+		adiv5_mem_write(ap, CORTEXM_DEMCR, &demcr, sizeof(demcr));
+		adiv5_mem_read(ap, &demcr, CORTEXM_DEMCR, sizeof(demcr));
+		DEBUG("DEMCR %" PRIx32 "-> %" PRIx32 "\n", ap->demcr, demcr);
+		platform_srst_set_val(false);
+		/* Wait for reset release happenes with waiting for DHCSR*/
+	}
+	uint32_t start_time = platform_time_ms();
+	while (1) {
+		/* Try hard to halt the target. STM32F7 in WFI
+		   needs multiple writes!*/
+		uint32_t dhcsr = CORTEXM_DHCSR_DBGKEY |
+			CORTEXM_DHCSR_C_HALT | CORTEXM_DHCSR_C_DEBUGEN;
+		adiv5_mem_write(ap, CORTEXM_DHCSR, &dhcsr, sizeof(dhcsr));
+		adiv5_mem_read(ap, &dhcsr, CORTEXM_DHCSR, sizeof(dhcsr));
+		uint32_t delta = platform_time_ms() - start_time;
+		if (dhcsr == (CORTEXM_DHCSR_S_HALT | CORTEXM_DHCSR_S_REGRDY |
+					  CORTEXM_DHCSR_C_HALT | CORTEXM_DHCSR_C_DEBUGEN)) {
+			DEBUG("Halted after %" PRIu32 " ms\n", delta);
+			break;
+		}
+		if (delta > cortexm_wait_timeout) {
+			DEBUG("Halt failed after %" PRIu32 " ms\n", delta);
+			return false;
+		}
+	}
+	/* For STM32 Cortex M7, already set DBGMCU_CR. If WFI is used,
+	 * even reading Rom Table will not work reliable.
+	 */
+	if ((ap->dp->targetid) && ((ap->dp->targetid & 0xffe) == 0x40)) {
+		ap->dbgmcu_cr = 0xe0042004;
+		uint32_t target = (ap->dp->targetid >> 16) & 0xfff;
+		uint32_t new_dbgmcu_cr_value = 7;
+		switch (target) {
+		case 0x450: /* STM32H7*/
+			DEBUG("FOUND STM32H7\n");
+			/* DBGMCU_CR at 0xe000e1000 probably only accessible by AP2*/
+			ap->dbgmcu_cr = 0x5c001004;
+			new_dbgmcu_cr_value = 0x3f;
+		}
+		/* Save old value */
+		adiv5_mem_read(ap, &ap->dbgmcu_cr_value, ap->dbgmcu_cr,
+					   sizeof(ap->dbgmcu_cr_value));
+		adiv5_mem_write(ap, ap->dbgmcu_cr, &new_dbgmcu_cr_value,
+						sizeof(&new_dbgmcu_cr_value));
+		adiv5_mem_read( ap, &new_dbgmcu_cr_value, ap->dbgmcu_cr,
+						sizeof(new_dbgmcu_cr_value));
+		DEBUG("DBGMCU_CR %" PRIx32 " -> 0x%" PRIx32 "\n",
+			  ap->dbgmcu_cr_value, new_dbgmcu_cr_value);
+	}
+	return true;
+}
+
+/* Leave CPU in the state it was before cortexm_prepare()*/
+void cortexm_release(ADIv5_AP_t *ap)
+{
+	if (ap->dbgmcu_cr)
+		adiv5_mem_write(ap, ap->dbgmcu_cr, &ap->dbgmcu_cr_value,
+						sizeof(ap->dbgmcu_cr_value));
+	adiv5_mem_write(ap, CORTEXM_DEMCR, &ap->demcr, sizeof(ap->demcr));
+	platform_srst_set_val(ap->srst);
+}
+
 static bool cortexm_forced_halt(target *t)
 {
 	target_halt_request(t);

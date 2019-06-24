@@ -175,11 +175,16 @@ typedef struct ADIv5_AP_s {
 
 	ADIv5_DP_t *dp;
 	uint8_t apsel;
-
+	bool    srst;
 	uint32_t idr;
 	uint32_t cfg;
 	uint32_t base;
 	uint32_t csw;
+	/* Cortex M specific */
+	uint32_t demcr;
+	/* STM32 M7 specific */
+	uint32_t dbgmcu_cr;
+	uint32_t dbgmcu_cr_value;
 } ADIv5_AP_t;
 
 void adiv5_dp_init(ADIv5_DP_t *dp);

@@ -22,7 +22,7 @@
 #include "target.h"
 #include "adiv5.h"
 
-extern long cortexm_wait_timeout;
+extern uint32_t cortexm_wait_timeout;
 /* Private peripheral bus base address */
 #define CORTEXM_PPB_BASE	0xE0000000
 
@@ -170,6 +170,8 @@ extern long cortexm_wait_timeout;
 
 #define	CORTEXM_TOPT_INHIBIT_SRST (1 << 2)
 
+bool cortexm_prepare(ADIv5_AP_t *ap);
+void cortexm_release(ADIv5_AP_t *ap);
 bool cortexm_probe(ADIv5_AP_t *ap, bool forced);
 ADIv5_AP_t *cortexm_ap(target *t);
 
