@@ -89,7 +89,7 @@ bool connect_assert_srst;
 #if defined(PLATFORM_HAS_DEBUG) && !defined(PC_HOSTED)
 bool debug_bmp;
 #endif
-long cortexm_wait_timeout = 2000; /* Timeout to wait for Cortex to react on halt command. */
+uint32_t cortexm_wait_timeout = 2000; /* Timeout to wait for Cortex to react on halt command. */
 
 int command_process(target *t, char *cmd)
 {
