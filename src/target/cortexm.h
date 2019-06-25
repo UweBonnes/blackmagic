@@ -172,7 +172,7 @@ extern uint32_t cortexm_wait_timeout;
 
 bool cortexm_prepare(ADIv5_AP_t *ap);
 void cortexm_release(ADIv5_AP_t *ap);
-bool cortexm_probe(ADIv5_AP_t *ap, bool forced);
+bool cortexm_probe(ADIv5_AP_t *ap);
 ADIv5_AP_t *cortexm_ap(target *t);
 
 bool cortexm_attach(target *t);

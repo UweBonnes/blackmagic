@@ -370,7 +370,7 @@ static bool adiv5_component_probe(ADIv5_AP_t *ap, uint32_t addr, int recursion, 
 				switch (pidr_pn_bits[i].arch) {
 				case aa_cortexm:
 					DEBUG("%s-> cortexm_probe\n", indent + 1);
-					cortexm_probe(ap, false);
+					cortexm_probe(ap);
 					break;
 				case aa_cortexa:
 					DEBUG("%s-> cortexa_probe\n", indent + 1);
@@ -432,7 +432,6 @@ ADIv5_AP_t *adiv5_new_ap(ADIv5_DP_t *dp, uint8_t apsel)
 
 void adiv5_dp_init(ADIv5_DP_t *dp)
 {
-	volatile bool probed = false;
 	volatile uint32_t ctrlstat = 0;
 	adiv5_dp_ref(dp);
 
@@ -530,12 +529,7 @@ void adiv5_dp_init(ADIv5_DP_t *dp)
 		 */
 
 		/* The rest should only be added after checking ROM table */
-		probed |= adiv5_component_probe(ap, ap->base, 0, 0);
-		if (!probed && (dp->idcode & 0xfff) == 0x477) {
-			DEBUG("-> cortexm_probe forced\n");
-			cortexm_probe(ap, true);
-			probed = true;
-		}
+		adiv5_component_probe(ap, ap->base, 0, 0);
 	}
 	if (ctl_ap)
 		cortexm_release(ctl_ap);

@@ -325,27 +325,7 @@ void cortexm_release(ADIv5_AP_t *ap)
 	platform_srst_set_val(ap->srst);
 }
 
-static bool cortexm_forced_halt(target *t)
-{
-	target_halt_request(t);
-	platform_srst_set_val(false);
-	uint32_t dhcsr = 0;
-	uint32_t start_time = platform_time_ms();
-	/* Try hard to halt the target. STM32F7 in  WFI
-	   needs multiple writes!*/
-	while (platform_time_ms() < start_time + cortexm_wait_timeout) {
-		dhcsr = target_mem_read32(t, CORTEXM_DHCSR);
-		if (dhcsr == (CORTEXM_DHCSR_S_HALT | CORTEXM_DHCSR_S_REGRDY |
-					  CORTEXM_DHCSR_C_HALT | CORTEXM_DHCSR_C_DEBUGEN))
-			break;
-		target_halt_request(t);
-	}
-	if (dhcsr != 0x00030003)
-		return false;
-	return true;
-}
-
-bool cortexm_probe(ADIv5_AP_t *ap, bool forced)
+bool cortexm_probe(ADIv5_AP_t *ap)
 {
 	target *t;
 
@@ -429,14 +409,6 @@ bool cortexm_probe(ADIv5_AP_t *ap, bool forced)
 	} else {
 		target_check_error(t);
 	}
-
-	/* Only force halt if read ROM Table failed and there is no DPv2
-	 * targetid!
-	 * So long, only STM32L0 is expected to enter this cause.
-	 */
-	if (forced && !ap->dp->targetid)
-		if (!cortexm_forced_halt(t))
-			return false;
 
 #define PROBE(x) \
 	do { if ((x)(t)) {target_halt_resume(t, 0); return true;} else target_check_error(t); } while (0)
