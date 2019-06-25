@@ -445,12 +445,11 @@ bool cortexm_attach(target *t)
 	/* Clear any pending fault condition */
 	target_check_error(t);
 
-	target_halt_request(t);
-	if (!cortexm_forced_halt(t))
+
+	if (!cortexm_prepare(cortexm_ap(t)))
 		return false;
 
-	/* Request halt on reset */
-	target_mem_write32(t, CORTEXM_DEMCR, priv->demcr);
+	/* Request halt on reset already done with cortexm_prepare*/
 
 	/* Reset DFSR flags */
 	target_mem_write32(t, CORTEXM_DFSR, CORTEXM_DFSR_RESETALL);
