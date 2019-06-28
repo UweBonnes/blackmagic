@@ -279,6 +279,14 @@ static bool adiv5_component_probe(ADIv5_AP_t *ap, uint32_t addr, int recursion, 
 		pidr |= (uint64_t)x << 32;
 	}
 
+	if (recursion == 0) {
+		ap->pidr = pidr;
+		DEBUG("PIDR 0x%010" PRIx64 "\n", pidr);
+		unsigned int designer = (pidr & 0xff000) >> 12;
+		if (designer == 0xa0) {
+			stm32_prepare(ap);
+		}
+	}
 	/* Assemble logical Component ID register value. */
 	for (int i = 0; i < 4; i++) {
 		uint32_t x = adiv5_mem_read32(ap, addr + CIDR0_OFFSET + 4*i);

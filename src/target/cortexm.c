@@ -256,6 +256,7 @@ static void cortexm_priv_free(void *priv)
  */
 bool cortexm_prepare(ADIv5_AP_t *ap)
 {
+	DEBUG("prepare\n");
 	if (platform_srst_get_val()) {
 		/* Release from reset and halt on Reset vector*/
 		ap->srst = true;
@@ -288,31 +289,52 @@ bool cortexm_prepare(ADIv5_AP_t *ap)
 			return false;
 		}
 	}
-	/* For STM32 Cortex M7, already set DBGMCU_CR. If WFI is used,
-	 * even reading Rom Table will not work reliable.
-	 */
-	if ((ap->dp->targetid) && ((ap->dp->targetid & 0xffe) == 0x40)) {
+	return true;
+}
+
+/* For STM32, enable DEBUG in the sleep modes.
+ * E.g. for M7 devices, reading rom tables will fail.
+ *
+ * Expect reading DWT/ITM/ETM and TPIU to fail as long as
+ * DEMCR TRCENA is not set!
+ */
+void stm32_prepare(ADIv5_AP_t *ap)
+{
+	uint32_t new_dbgmcu_cr_value = 7;
+	unsigned int identity = ap->idr & 0xff;
+	switch (identity) {
+/* Fixme: Observe if setting DBGMCU_CR is needed for other
+ * devices as CortexM7
+ */
+	case 0x11: /* M3/M4 */
 		ap->dbgmcu_cr = 0xe0042004;
-		uint32_t target = (ap->dp->targetid >> 16) & 0xfff;
-		uint32_t new_dbgmcu_cr_value = 7;
-		switch (target) {
-		case 0x450: /* STM32H7*/
+		break;
+	case 0x21: /* M0 */
+	case 0x31: /* M0+ */
+		ap->dbgmcu_cr = 0x40015804;
+		break;
+	case 0x01: /* M7 */
+		if ((ap->pidr & 0xfff) == 0x450) {
 			DEBUG("FOUND STM32H7\n");
 			/* DBGMCU_CR at 0xe000e1000 probably only accessible by AP2*/
 			ap->dbgmcu_cr = 0x5c001004;
 			new_dbgmcu_cr_value = 0x3f;
+		} else {
+			ap->dbgmcu_cr = 0xe0042004;
 		}
-		/* Save old value */
-		adiv5_mem_read(ap, &ap->dbgmcu_cr_value, ap->dbgmcu_cr,
-					   sizeof(ap->dbgmcu_cr_value));
-		adiv5_mem_write(ap, ap->dbgmcu_cr, &new_dbgmcu_cr_value,
-						sizeof(&new_dbgmcu_cr_value));
-		adiv5_mem_read( ap, &new_dbgmcu_cr_value, ap->dbgmcu_cr,
-						sizeof(new_dbgmcu_cr_value));
-		DEBUG("DBGMCU_CR %" PRIx32 " -> 0x%" PRIx32 "\n",
-			  ap->dbgmcu_cr_value, new_dbgmcu_cr_value);
+		break;
+	default:
+		return; /* No Cortex M*/
 	}
-	return true;
+	/* Save old value */
+	adiv5_mem_read(ap, &ap->dbgmcu_cr_value, ap->dbgmcu_cr,
+				   sizeof(ap->dbgmcu_cr_value));
+	adiv5_mem_write(ap, ap->dbgmcu_cr, &new_dbgmcu_cr_value,
+					sizeof(&new_dbgmcu_cr_value));
+	adiv5_mem_read( ap, &new_dbgmcu_cr_value, ap->dbgmcu_cr,
+					sizeof(new_dbgmcu_cr_value));
+	DEBUG("DBGMCU_CR %" PRIx32 " -> 0x%" PRIx32 "\n",
+		  ap->dbgmcu_cr_value, new_dbgmcu_cr_value);
 }
 
 /* Leave CPU in the state it was before cortexm_prepare()*/
