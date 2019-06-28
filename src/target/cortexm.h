@@ -171,6 +171,7 @@ extern uint32_t cortexm_wait_timeout;
 #define	CORTEXM_TOPT_INHIBIT_SRST (1 << 2)
 
 bool cortexm_prepare(ADIv5_AP_t *ap);
+void stm32_prepare(ADIv5_AP_t *ap);
 void cortexm_release(ADIv5_AP_t *ap);
 bool cortexm_probe(ADIv5_AP_t *ap);
 ADIv5_AP_t *cortexm_ap(target *t);
