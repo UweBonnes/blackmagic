@@ -257,18 +257,20 @@ static void cortexm_priv_free(void *priv)
 bool cortexm_prepare(ADIv5_AP_t *ap)
 {
 	DEBUG("prepare\n");
+	/* Save DEMCR */
+	adiv5_mem_read(ap, &ap->demcr, CORTEXM_DEMCR, sizeof(ap->demcr));
+	/* Already set vectors to catch */
+	uint32_t demcr = CORTEXM_DEMCR_TRCENA | CORTEXM_DEMCR_VC_HARDERR |
+		CORTEXM_DEMCR_VC_CORERESET;
+	adiv5_mem_write(ap, CORTEXM_DEMCR, &demcr, sizeof(demcr));
+	adiv5_mem_read(ap, &demcr, CORTEXM_DEMCR, sizeof(demcr));
+	DEBUG("DEMCR %" PRIx32 "-> %" PRIx32 "\n", ap->demcr, demcr);
+
 	if (platform_srst_get_val()) {
 		/* Release from reset and halt on Reset vector*/
 		ap->srst = true;
-		adiv5_mem_read(ap, &ap->demcr, CORTEXM_DEMCR, sizeof(ap->demcr));
-		/* Default vectors to catch */
-		uint32_t demcr = CORTEXM_DEMCR_TRCENA | CORTEXM_DEMCR_VC_HARDERR |
-			CORTEXM_DEMCR_VC_CORERESET;
-		adiv5_mem_write(ap, CORTEXM_DEMCR, &demcr, sizeof(demcr));
-		adiv5_mem_read(ap, &demcr, CORTEXM_DEMCR, sizeof(demcr));
-		DEBUG("DEMCR %" PRIx32 "-> %" PRIx32 "\n", ap->demcr, demcr);
 		platform_srst_set_val(false);
-		/* Wait for reset release happenes with waiting for DHCSR*/
+		/* Wait for reset release will happen with waiting for DHCSR*/
 	}
 	uint32_t start_time = platform_time_ms();
 	while (1) {
