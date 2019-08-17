@@ -311,6 +311,10 @@ void stm32_prepare(ADIv5_AP_t *ap)
 	case 0x11: /* M3/M4 */
 		ap->dbgmcu_cr = 0xe0042004;
 		break;
+	case 0x15: /* M33 */
+		ap->dbgmcu_cr = 0xe0044004;
+		new_dbgmcu_cr_value = 0x6;
+		break;
 	case 0x21: /* M0 */
 	case 0x31: /* M0+ */
 		ap->dbgmcu_cr = 0x40015804;
@@ -379,8 +383,14 @@ bool cortexm_probe(ADIv5_AP_t *ap)
 	case 0x11: /* M3/M4 */
 		t->core = "M3/M4";
 		break;
+	case 0x15: /* M33 */
+		t->core = "M33";
+		break;
 	case 0x21: /* M0 */
 		t->core = "M0";
+		break;
+	case 0x25: /* M23 */
+		t->core = "M23";
 		break;
 	case 0x31: /* M0+ */
 		t->core = "M0+";

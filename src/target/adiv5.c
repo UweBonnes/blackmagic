@@ -508,7 +508,9 @@ void adiv5_dp_init(ADIv5_DP_t *dp)
 			unsigned int identity = ap->idr & 0xff;
 			switch (identity) {
 			case 0x11: /* M3/M4 */
+			case 0x15: /* M33 */
 			case 0x21: /* M0 */
+			case 0x25: /* M23 */
 			case 0x31: /* M0+ */
 			case 0x01: /* M7 */
 				if (!cortexm_prepare(ap))
