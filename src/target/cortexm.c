@@ -363,7 +363,6 @@ void cortexm_release(ADIv5_AP_t *ap)
 	adiv5_mem_write(ap, CORTEXM_DEMCR, &ap->demcr, sizeof(ap->demcr));
 	adiv5_mem_read(ap, &res, CORTEXM_DEMCR, sizeof(res));
 	DEBUG("cortexm_release, DEMCR %" PRIx32 ", apsel %d\n", res, ap->apsel);
-	platform_srst_set_val(ap->srst);
 }
 
 bool cortexm_probe(ADIv5_AP_t *ap)
