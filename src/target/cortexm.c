@@ -305,6 +305,7 @@ bool cortexm_prepare(ADIv5_AP_t *ap)
  */
 void stm32_prepare(ADIv5_AP_t *ap)
 {
+	DEBUG("stm32_prepare\n");
 	uint32_t new_dbgmcu_cr_value = 7;
 	unsigned int identity = ap->idr & 0xff;
 	switch (identity) {
@@ -325,9 +326,12 @@ void stm32_prepare(ADIv5_AP_t *ap)
 	case 0x01: /* M7 */
 		if ((ap->pidr & 0xfff) == 0x450) {
 			DEBUG("FOUND STM32H7\n");
-			/* DBGMCU_CR at 0xe000e1000 probably only accessible by AP2*/
+			/* DBGMCU_CR of the STM43H743 is strange.
+			 * On startup we must access at 0x5c001004 and AP0.
+			 * When releasing we must access on 0xe00e1000 and AP0.
+			 */
 			ap->dbgmcu_cr = 0x5c001004;
-			new_dbgmcu_cr_value = 0x3f;
+			new_dbgmcu_cr_value = 0x006001bf;
 		} else {
 			ap->dbgmcu_cr = 0xe0042004;
 		}
@@ -340,10 +344,13 @@ void stm32_prepare(ADIv5_AP_t *ap)
 				   sizeof(ap->dbgmcu_cr_value));
 	adiv5_mem_write(ap, ap->dbgmcu_cr, &new_dbgmcu_cr_value,
 					sizeof(&new_dbgmcu_cr_value));
-	adiv5_mem_read( ap, &new_dbgmcu_cr_value, ap->dbgmcu_cr,
-					sizeof(new_dbgmcu_cr_value));
-	DEBUG("DBGMCU_CR %" PRIx32 " -> 0x%" PRIx32 "\n",
-		  ap->dbgmcu_cr_value, new_dbgmcu_cr_value);
+	uint32_t res;
+	adiv5_mem_read( ap, &res, ap->dbgmcu_cr, sizeof(res));
+	DEBUG("DBGMCU_CR before %" PRIx32 " write %" PRIx32 " read 0x%" PRIx32 "\n",
+		  ap->dbgmcu_cr_value, new_dbgmcu_cr_value, res);
+	/* Fix for strang STM32H743 DBGMCU behaviour.*/
+	if (identity == 0x01)
+		ap->dbgmcu_cr = 0xe00e1000;
 }
 
 /* Leave CPU in the state it was before cortexm_prepare()*/
@@ -352,7 +359,10 @@ void cortexm_release(ADIv5_AP_t *ap)
 	if (ap->dbgmcu_cr)
 		adiv5_mem_write(ap, ap->dbgmcu_cr, &ap->dbgmcu_cr_value,
 						sizeof(ap->dbgmcu_cr_value));
+	uint32_t res;
 	adiv5_mem_write(ap, CORTEXM_DEMCR, &ap->demcr, sizeof(ap->demcr));
+	adiv5_mem_read(ap, &res, CORTEXM_DEMCR, sizeof(res));
+	DEBUG("cortexm_release, DEMCR %" PRIx32 ", apsel %d\n", res, ap->apsel);
 	platform_srst_set_val(ap->srst);
 }
 
