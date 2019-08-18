@@ -140,13 +140,16 @@ void target_add_commands(target *t, const struct command_s *cmds, const char *na
 	tc->next = NULL;
 }
 
+extern bool connect_assert_srst;
 target *target_attach_n(int n, struct target_controller *tc)
 {
 	target *t;
 	int i;
 	for(t = target_list, i = 1; t; t = t->next, i++)
-		if(i == n)
+		if(i == n) {
+			platform_srst_set_val(connect_assert_srst);
 			return target_attach(t, tc);
+		}
 	return NULL;
 }
 
