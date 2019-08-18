@@ -256,14 +256,17 @@ static void cortexm_priv_free(void *priv)
  */
 bool cortexm_prepare(ADIv5_AP_t *ap)
 {
-	DEBUG("prepare\n");
+	DEBUG("cortexm_prepare\n");
 	/* Save DEMCR */
 	adiv5_mem_read(ap, &ap->demcr, CORTEXM_DEMCR, sizeof(ap->demcr));
 	/* Already set vectors to catch */
 	uint32_t demcr = CORTEXM_DEMCR_TRCENA | CORTEXM_DEMCR_VC_HARDERR |
 		CORTEXM_DEMCR_VC_CORERESET;
-	adiv5_mem_write(ap, CORTEXM_DEMCR, &demcr, sizeof(demcr));
-	adiv5_mem_read(ap, &demcr, CORTEXM_DEMCR, sizeof(demcr));
+	uint32_t res;
+	do {
+		adiv5_mem_write(ap, CORTEXM_DEMCR, &demcr, sizeof(demcr));
+		adiv5_mem_read(ap, &res, CORTEXM_DEMCR, sizeof(res));
+	} while (res != demcr);
 	DEBUG("DEMCR %" PRIx32 "-> %" PRIx32 "\n", ap->demcr, demcr);
 
 	if (platform_srst_get_val()) {
