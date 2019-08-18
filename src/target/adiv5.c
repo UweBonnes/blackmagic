@@ -38,6 +38,9 @@
  * are consistently named and accessible when needed in the codebase.
  */
 
+/* Some Designers already seen*/
+#define DESIGNER_STM32 0x20
+
 /* ROM table CIDR values */
 #define CIDR0_OFFSET    0xFF0 /* DBGCID0 */
 #define CIDR1_OFFSET    0xFF4 /* DBGCID1 */
@@ -279,14 +282,6 @@ static bool adiv5_component_probe(ADIv5_AP_t *ap, uint32_t addr, int recursion, 
 		pidr |= (uint64_t)x << 32;
 	}
 
-	if (recursion == 0) {
-		ap->pidr = pidr;
-		DEBUG("PIDR 0x%010" PRIx64 "\n", pidr);
-		unsigned int designer = (pidr & 0xff000) >> 12;
-		if (designer == 0xa0) {
-			stm32_prepare(ap);
-		}
-	}
 	/* Assemble logical Component ID register value. */
 	for (int i = 0; i < 4; i++) {
 		uint32_t x = adiv5_mem_read32(ap, addr + CIDR0_OFFSET + 4*i);
@@ -539,6 +534,21 @@ void adiv5_dp_init(ADIv5_DP_t *dp)
 		 */
 
 		/* The rest should only be added after checking ROM table */
+		if (i == 0) {
+			uint32_t pidr = 0;
+			uint32_t addr = ap->base &~3;
+			for (int i = 0; i < 4; i++) {
+				uint32_t x = adiv5_mem_read32(ap, addr + PIDR0_OFFSET + 4*i);
+				pidr |= (x & 0xff) << (i * 8);
+			}
+			uint32_t designer = (pidr & 0x7f000) >> 12;
+			DEBUG("AP0 PIDR 0x%010" PRIx32 ", designer 0x%" PRIx32 "\n",
+				  pidr, designer);
+			ap->pidr = pidr;
+			if (designer == DESIGNER_STM32) {
+				stm32_prepare(ap);
+			}
+		}
 		adiv5_component_probe(ap, ap->base, 0, 0);
 	}
 	if (ctl_ap)
