@@ -363,6 +363,8 @@ void cortexm_release(ADIv5_AP_t *ap)
 	adiv5_mem_write(ap, CORTEXM_DEMCR, &ap->demcr, sizeof(ap->demcr));
 	adiv5_mem_read(ap, &res, CORTEXM_DEMCR, sizeof(res));
 	DEBUG("cortexm_release, DEMCR %" PRIx32 ", apsel %d\n", res, ap->apsel);
+	uint32_t dhcsr = CORTEXM_DHCSR_DBGKEY;
+	adiv5_mem_write(ap, CORTEXM_DHCSR, &dhcsr, sizeof(dhcsr));
 }
 
 bool cortexm_probe(ADIv5_AP_t *ap)
@@ -542,7 +544,8 @@ void cortexm_detach(target *t)
 	/* Clear any stale watchpoints */
 	for(i = 0; i < priv->hw_watchpoint_max; i++)
 		target_mem_write32(t, CORTEXM_DWT_FUNC(i), 0);
-
+	/* Clear DEMCR */
+	target_mem_write32(t, CORTEXM_DEMCR, 0);
 	/* Disable debug */
 	target_mem_write32(t, CORTEXM_DHCSR, CORTEXM_DHCSR_DBGKEY);
 	/* Add some clock cycles to get the CPU running again.*/
