@@ -181,8 +181,6 @@ typedef struct ADIv5_AP_s {
 	uint32_t base;
 	uint32_t csw;
 	uint64_t pidr;
-	/* Cortex M specific */
-	uint32_t demcr;
 	/* STM32 M7 specific */
 	uint32_t dbgmcu_cr;
 	uint32_t dbgmcu_cr_value;
