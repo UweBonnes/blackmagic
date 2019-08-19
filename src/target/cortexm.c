@@ -257,8 +257,6 @@ static void cortexm_priv_free(void *priv)
 bool cortexm_prepare(ADIv5_AP_t *ap)
 {
 	DEBUG("cortexm_prepare\n");
-	/* Save DEMCR */
-	adiv5_mem_read(ap, &ap->demcr, CORTEXM_DEMCR, sizeof(ap->demcr));
 	/* Already set vectors to catch */
 	uint32_t demcr = CORTEXM_DEMCR_TRCENA | CORTEXM_DEMCR_VC_HARDERR |
 		CORTEXM_DEMCR_VC_CORERESET;
@@ -267,7 +265,7 @@ bool cortexm_prepare(ADIv5_AP_t *ap)
 		adiv5_mem_write(ap, CORTEXM_DEMCR, &demcr, sizeof(demcr));
 		adiv5_mem_read(ap, &res, CORTEXM_DEMCR, sizeof(res));
 	} while (res != demcr);
-	DEBUG("DEMCR %" PRIx32 "-> %" PRIx32 "\n", ap->demcr, demcr);
+	DEBUG("DEMCR -> %" PRIx32 "\n", demcr);
 
 	if (platform_srst_get_val()) {
 		/* Release from reset and halt on Reset vector*/
@@ -359,8 +357,8 @@ void cortexm_release(ADIv5_AP_t *ap)
 	if (ap->dbgmcu_cr)
 		adiv5_mem_write(ap, ap->dbgmcu_cr, &ap->dbgmcu_cr_value,
 						sizeof(ap->dbgmcu_cr_value));
-	uint32_t res;
-	adiv5_mem_write(ap, CORTEXM_DEMCR, &ap->demcr, sizeof(ap->demcr));
+	uint32_t res = 0;
+	adiv5_mem_write(ap, CORTEXM_DEMCR, &res, sizeof(res));
 	adiv5_mem_read(ap, &res, CORTEXM_DEMCR, sizeof(res));
 	DEBUG("cortexm_release, DEMCR %" PRIx32 ", apsel %d\n", res, ap->apsel);
 	uint32_t dhcsr = CORTEXM_DHCSR_DBGKEY;
