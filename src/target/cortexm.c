@@ -261,19 +261,27 @@ bool cortexm_prepare(ADIv5_AP_t *ap)
 	uint32_t demcr = CORTEXM_DEMCR_TRCENA | CORTEXM_DEMCR_VC_HARDERR |
 		CORTEXM_DEMCR_VC_CORERESET;
 	uint32_t res;
-	do {
+	uint32_t start_time = platform_time_ms();
+	uint32_t delta = platform_time_ms() - start_time;
+	while (1) {
 		adiv5_mem_write(ap, CORTEXM_DEMCR, &demcr, sizeof(demcr));
 		adiv5_mem_read(ap, &res, CORTEXM_DEMCR, sizeof(res));
-	} while (res != demcr);
-	DEBUG("DEMCR -> %" PRIx32 "\n", demcr);
-
+		if (res == demcr) {
+			DEBUG("DEMCR -> %" PRIx32 " after %" PRIx32 " ms\n", demcr, delta);
+			break;
+		}
+		if (delta > cortexm_wait_timeout) {
+			DEBUG("Write DEMCR failed after %" PRIu32 " ms\n", delta);
+			return false;
+		}
+	}
 	if (platform_srst_get_val()) {
 		/* Release from reset and halt on Reset vector*/
 		ap->srst = true;
 		platform_srst_set_val(false);
 		/* Wait for reset release will happen with waiting for DHCSR*/
 	}
-	uint32_t start_time = platform_time_ms();
+	start_time = platform_time_ms();
 	while (1) {
 		/* Try hard to halt the target. STM32F7 in WFI
 		   needs multiple writes!*/
@@ -281,7 +289,7 @@ bool cortexm_prepare(ADIv5_AP_t *ap)
 			CORTEXM_DHCSR_C_HALT | CORTEXM_DHCSR_C_DEBUGEN;
 		adiv5_mem_write(ap, CORTEXM_DHCSR, &dhcsr, sizeof(dhcsr));
 		adiv5_mem_read(ap, &dhcsr, CORTEXM_DHCSR, sizeof(dhcsr));
-		uint32_t delta = platform_time_ms() - start_time;
+		delta = platform_time_ms() - start_time;
 		if (dhcsr == (CORTEXM_DHCSR_S_HALT | CORTEXM_DHCSR_S_REGRDY |
 					  CORTEXM_DHCSR_C_HALT | CORTEXM_DHCSR_C_DEBUGEN)) {
 			DEBUG("Halted after %" PRIu32 " ms\n", delta);
