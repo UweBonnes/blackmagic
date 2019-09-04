@@ -258,9 +258,12 @@ static uint32_t adiv5_mem_read32(ADIv5_AP_t *ap, uint32_t addr)
 	return ret;
 }
 
-static bool adiv5_component_probe(ADIv5_AP_t *ap, uint32_t addr, int recursion, int num_entry)
+static bool adiv5_component_probe(ADIv5_AP_t *ap, uint32_t addr, bool do_test, int recursion, int num_entry)
 {
 	(void) num_entry;
+	if (recursion == 0) {
+		DEBUG("Test %s\n", (do_test)? "true" : "false");
+	}
 	addr &= ~3;
 	uint64_t pidr = 0;
 	uint32_t cidr = 0;
@@ -305,7 +308,7 @@ static bool adiv5_component_probe(ADIv5_AP_t *ap, uint32_t addr, int recursion, 
 	uint32_t cid_class = (cidr & CID_CLASS_MASK) >> CID_CLASS_SHIFT;
 
 	/* ROM table */
-	if (cid_class == cidc_romtab) {
+	if ((cid_class == cidc_romtab) && !do_test) {
 		/* Check SYSMEM bit */
 #if defined(ENABLE_DEBUG) && defined(PLATFORM_HAS_DEBUG)
 		uint32_t memtype = adiv5_mem_read32(ap, addr | ADIV5_ROM_MEMTYPE) &
@@ -335,7 +338,7 @@ static bool adiv5_component_probe(ADIv5_AP_t *ap, uint32_t addr, int recursion, 
 
 			/* Probe recursively */
 			res |= adiv5_component_probe(
-				ap, addr + (entry & ADIV5_ROM_ROMENTRY_OFFSET),
+				ap, addr + (entry & ADIV5_ROM_ROMENTRY_OFFSET), false,
 				recursion + 1, i);
 		}
 		DEBUG("%sROM: Table END\n", indent);
@@ -370,6 +373,8 @@ static bool adiv5_component_probe(ADIv5_AP_t *ap, uint32_t addr, int recursion, 
 					      cidc_debug_strings[pidr_pn_bits[i].cidc]);
 				}
 				res = true;
+				if (do_test)
+					return res;
 				switch (pidr_pn_bits[i].arch) {
 				case aa_cortexm:
 					DEBUG("%s-> cortexm_probe\n", indent + 1);
@@ -508,8 +513,10 @@ void adiv5_dp_init(ADIv5_DP_t *dp)
 			case 0x25: /* M23 */
 			case 0x31: /* M0+ */
 			case 0x01: /* M7 */
-				if (!cortexm_prepare(ap))
-					return;
+				if (!(adiv5_component_probe(ap, ap->base, true, 0, 0))) {
+					if (!cortexm_prepare(ap))
+						return;
+				}
 				ctl_ap = ap;
 			}
 		}
@@ -549,7 +556,7 @@ void adiv5_dp_init(ADIv5_DP_t *dp)
 				stm32_prepare(ap);
 			}
 		}
-		adiv5_component_probe(ap, ap->base, 0, 0);
+		adiv5_component_probe(ap, ap->base, false, 0, 0);
 	}
 	if (ctl_ap)
 		cortexm_release(ctl_ap);
