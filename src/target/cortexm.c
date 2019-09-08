@@ -266,6 +266,7 @@ bool cortexm_prepare(ADIv5_AP_t *ap)
 	while (1) {
 		adiv5_mem_write(ap, CORTEXM_DEMCR, &demcr, sizeof(demcr));
 		adiv5_mem_read(ap, &res, CORTEXM_DEMCR, sizeof(res));
+		delta = platform_time_ms() - start_time;
 		if (res == demcr) {
 			DEBUG("DEMCR -> %" PRIx32 " after %" PRIx32 " ms\n", demcr, delta);
 			break;
