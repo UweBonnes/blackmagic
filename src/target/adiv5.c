@@ -40,6 +40,10 @@
 
 /* Some Designers already seen*/
 #define DESIGNER_STM32 0x20
+#define DESIGNER_ATMEL 0x1f
+
+#define PIDR_ATMEL_DSU_BITS 0x9f000ULL
+#define PIDR_ATMEL_DSU 0x9fcd0
 
 /* ROM table CIDR values */
 #define CIDR0_OFFSET    0xFF0 /* DBGCID0 */
@@ -216,6 +220,7 @@ static const struct {
 	{0xc09, aa_cortexa,   cidc_dc,      PIDR_PN_BIT_STRINGS("Cortex-A9 Debug", "(Debug Unit)")},
 	{0xc0f, aa_nosupport, cidc_unknown, PIDR_PN_BIT_STRINGS("Cortex-A15 Debug", "(Debug Unit)")}, /* support? */
 	{0xc14, aa_nosupport, cidc_unknown, PIDR_PN_BIT_STRINGS("Cortex-R4 Debug", "(Debug Unit)")}, /* support? */
+	{0xcd0, aa_cortexm,   cidc_unknown, PIDR_PN_BIT_STRINGS("Atmel DSU", "(Device Service Unit)")},
 	{0xfff, aa_end,       cidc_unknown, PIDR_PN_BIT_STRINGS("end", "end")}
 };
 
@@ -343,10 +348,11 @@ static bool adiv5_component_probe(ADIv5_AP_t *ap, uint32_t addr, bool do_test, i
 		}
 		DEBUG("%sROM: Table END\n", indent);
 	} else {
-		/* Check if the component was designed by ARM, we currently do not support,
-		 * any components by other designers.
+		/* Check if the component was designed by ARM or contains an Atmel DSU,
+		 * we currently do not support any components by other designers.
 		 */
-		if ((pidr & ~(PIDR_REV_MASK | PIDR_PN_MASK)) != PIDR_ARM_BITS) {
+		uint64_t pidr_jep_bits = (pidr & ~(PIDR_REV_MASK | PIDR_PN_MASK));
+		if (pidr_jep_bits != PIDR_ARM_BITS && pidr_jep_bits != PIDR_ATMEL_DSU_BITS) {
 			DEBUG("%s0x%"PRIx32": 0x%"PRIx64" <- does not match ARM JEP-106\n",
 				  indent, addr, pidr);
 			return false;
