@@ -313,7 +313,7 @@ static bool adiv5_component_probe(ADIv5_AP_t *ap, uint32_t addr, bool do_test, i
 	uint32_t cid_class = (cidr & CID_CLASS_MASK) >> CID_CLASS_SHIFT;
 
 	/* ROM table */
-	if ((cid_class == cidc_romtab) && !do_test) {
+	if ((cid_class == cidc_romtab) && !do_test && (pidr & PIDR_PN_MASK) != 0xcd0) {
 		/* Check SYSMEM bit */
 #if defined(ENABLE_DEBUG) && defined(PLATFORM_HAS_DEBUG)
 		uint32_t memtype = adiv5_mem_read32(ap, addr | ADIV5_ROM_MEMTYPE) &
