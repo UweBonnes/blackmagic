@@ -255,6 +255,37 @@ static void cortexm_priv_free(void *priv)
  */
 bool cortexm_prepare(ADIv5_AP_t *ap)
 {
+	bool initial_fixup = false;
+	if (!(ap->apsel) && !(ap->designer)) {
+		/* Try here to read PIDR.*/
+		/* Assemble logical Product ID register value. */
+#define PIDR4_OFFSET  0xfd0 /* DBGPID4 */
+		uint32_t addr = (ap->base & ~3) + PIDR4_OFFSET;
+		uint8_t pidr[8];
+		DEBUG("Pidr-bytes: 0x");
+		for (int  i = 0; i < 8; i++) {
+			adiv5_mem_read(ap, &pidr[i], addr + i * 4, 1);
+			DEBUG("%02" PRIx8 , pidr[i]);
+		}
+		DEBUG(". ");
+		/* some check that PIDR makes sense*/
+		if (!pidr[1] && !pidr[2] && !pidr[3]) {
+			uint32_t designer = (pidr[5] & 0xf0) >> 4;
+			designer |= (pidr[6] & 0x07) << 4;
+			designer |= (pidr[0] & 0xff) << 8;
+			ap->designer = designer;
+			ap->partno = pidr[4] | ((pidr[5] & 0xf) << 8);
+			DEBUG("Designer 0x%03" PRIx32 ", Partno 0x%03" PRIx16 ". ",
+					designer, ap->partno);
+			initial_fixup = true;
+		}
+	}
+	if (ap->designer == DESIGNER_ATMEL) {
+		/* A protected SAMD never sets S_HALT.
+		 * Continue anyways.*/
+		DEBUG("Exception for Atmel devices\n");
+		return true;
+	}
 	DEBUG("cortexm_prepare ");
 	uint32_t start_time = platform_time_ms();
 	uint32_t initial_demcr;
@@ -306,38 +337,7 @@ bool cortexm_prepare(ADIv5_AP_t *ap)
 			}
 		}
 	}
-	bool initial_fixup = false;
-	if (!(ap->apsel) && !(ap->designer)) {
-		/* Try here to read PIDR.*/
-		/* Assemble logical Product ID register value. */
-#define PIDR4_OFFSET  0xfd0 /* DBGPID4 */
-		uint32_t addr = (ap->base & ~3) + PIDR4_OFFSET;
-		uint8_t pidr[8];
-		DEBUG("Pidr-bytes: 0x");
-		for (int  i = 0; i < 8; i++) {
-			adiv5_mem_read(ap, &pidr[i], addr + i * 4, 1);
-			DEBUG("%02" PRIx8 , pidr[i]);
-		}
-		DEBUG(". ");
-		/* some check that PIDR makes sense*/
-		if (!pidr[1] && !pidr[2] && !pidr[3]) {
-			uint32_t designer = (pidr[5] & 0xf0) >> 4;
-			designer |= (pidr[6] & 0x07) << 4;
-			designer |= (pidr[0] & 0xff) << 8;
-			ap->designer = designer;
-			ap->partno = pidr[4] | ((pidr[5] & 0xf) << 8);
-			DEBUG("Designer 0x%03" PRIx32 ", Partno 0x%03" PRIx16 ". ",
-				  designer, ap->partno);
-			initial_fixup = true;
-		}
-	}
 	if (!res) {
-		if (ap->designer == DESIGNER_ATMEL) {
-			/* A protected SAMD never sets S_HALT.
-			 * Continue anyways.*/
-			DEBUG("Exception for Atmel devices\n");
-			return true;
-		}
 		DEBUG("Failed ");
 	} else {
 		ap->demcr = initial_demcr;
