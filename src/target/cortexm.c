@@ -261,12 +261,17 @@ bool cortexm_prepare(ADIv5_AP_t *ap)
 	const uint32_t dhcsr_ctl = CORTEXM_DHCSR_DBGKEY | CORTEXM_DHCSR_C_DEBUGEN |
 			CORTEXM_DHCSR_C_HALT;
 	uint32_t dhcsr_status;
-	uint32_t delta;
+	uint32_t delta = 0;
 	bool res = true;
 	/* Reset sticky bits */
+	adiv5_dp_error(ap->dp);
 	adiv5_mem_read(ap, &dhcsr_status, CORTEXM_DHCSR, sizeof(dhcsr_status));
-	adiv5_mem_read(ap, &dhcsr_status, CORTEXM_DHCSR, sizeof(dhcsr_status));
-	if ((dhcsr_status & 0xfff00000) == CORTEXM_DHCSR_S_RESET_ST) {
+	uint32_t err = adiv5_dp_error(ap->dp);
+	if (err & ADIV5_DP_CTRLSTAT_STICKYERR) {
+		DEBUG("...\nHit error on DHCSR read. Suspect protected Atmel "
+		      "part, skipping to PIDR check.\n");
+	}
+	else if ((dhcsr_status & 0xfff00000) == CORTEXM_DHCSR_S_RESET_ST) {
 		DEBUG("under reset. ");
 		adiv5_mem_write(ap, CORTEXM_DHCSR, &dhcsr_ctl, sizeof(dhcsr_ctl));
 		adiv5_mem_read(ap, &initial_demcr, CORTEXM_DEMCR, sizeof(uint32_t));
