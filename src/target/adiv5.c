@@ -435,7 +435,7 @@ static bool adiv5_component_probe(ADIv5_AP_t *ap, uint32_t addr, int recursion, 
 			}
 
 			/* Probe recursively */
-			res |= adiv5_component_probe(
+			adiv5_component_probe(
 				ap, addr + (entry & ADIV5_ROM_ROMENTRY_OFFSET),
 				recursion + 1, i);
 		}
@@ -494,7 +494,7 @@ static bool adiv5_component_probe(ADIv5_AP_t *ap, uint32_t addr, int recursion, 
 				switch (pidr_pn_bits[i].arch) {
 				case aa_cortexm:
 					DEBUG_INFO("%s-> cortexm_probe\n", indent + 1);
-					cortexm_probe(ap, false);
+					cortexm_probe(ap);
 					break;
 				case aa_cortexa:
 					DEBUG_INFO("\n -> cortexa_probe\n");
@@ -548,17 +548,33 @@ ADIv5_AP_t *adiv5_new_ap(ADIv5_DP_t *dp, uint8_t apsel)
 		ap->csw &= ~ADIV5_AP_CSW_TRINPROG;
 	}
 
-	DEBUG_INFO("AP %3d: IDR=%08" PRIx32 " CFG=%08" PRIx32 " BASE=%08" PRIx32 " CSW=%08" PRIx32 "\n",
-	      apsel, ap->idr, adiv5_ap_read(ap, ADIV5_AP_CFG), ap->base, ap->csw);
-	if (!apsel && ((ap->idr & 0xf) == ARM_AP_TYPE_AHB) && !cortexm_prepare(ap))
-		return NULL;
-
+	DEBUG_INFO("AP %3d: IDR=%08"PRIx32" CFG=%08"PRIx32" BASE=%08"PRIx32" CSW=%08"PRIx32"\n",
+			   apsel, ap->idr, adiv5_ap_read(ap, ADIV5_AP_CFG),
+			   ap->base, ap->csw);
+	if (!apsel && ((ap->idr & 0xf) == ARM_AP_TYPE_AHB)) {
+		/* Test for protected Atmel devices. Access outside DSU fails.
+		 * For protected device, continue with Rom Table anyways.
+		 */
+		adiv5_dp_error(ap->dp);
+		adiv5_mem_read32(ap, CORTEXM_DHCSR);
+		if ( adiv5_dp_error(ap->dp) & ADIV5_DP_CTRLSTAT_STICKYERR) {
+			uint32_t err = adiv5_dp_error(ap->dp);
+			if (err & ADIV5_DP_CTRLSTAT_STICKYERR) {
+				DEBUG_INFO("...\nHit error on DHCSR read. Suspect protected Atmel "
+					  "part, skipping to PIDR check.\n");
+			}
+		} else {
+			if (!cortexm_prepare(ap)) {
+				free(ap);
+				return NULL;
+			}
+		}
+	}
 	return ap;
 }
 
 void adiv5_dp_init(ADIv5_DP_t *dp)
 {
-	volatile bool probed = false;
 	volatile uint32_t ctrlstat = 0;
 	adiv5_dp_ref(dp);
 #if PC_HOSTED  == 1
@@ -698,12 +714,7 @@ void adiv5_dp_init(ADIv5_DP_t *dp)
 		 */
 
 		/* The rest should only be added after checking ROM table */
-		probed |= adiv5_component_probe(ap, ap->base, 0, 0);
-		if (!probed && (dp->idcode & 0xfff) == 0x477) {
-			DEBUG_INFO("-> cortexm_probe forced\n");
-			cortexm_probe(ap, true);
-			probed = true;
-		}
+		adiv5_component_probe(ap, ap->base, 0, 0);
 	}
 	adiv5_dp_unref(dp);
 }
