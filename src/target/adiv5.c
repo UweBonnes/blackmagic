@@ -568,6 +568,27 @@ ADIv5_AP_t *adiv5_new_ap(ADIv5_DP_t *dp, uint8_t apsel)
 				free(ap);
 				return NULL;
 			}
+			dp->dp_release_ap = ap;
+			if (connect_assert_srst) {
+			/* E.g. STM32L0 does not allow reading the romtable under reset.
+			 * Request halt on reset, deassert reset and wait until CPU no
+			 * longer sees the reset.
+			 */
+				uint32_t demcr =
+					CORTEXM_DEMCR_TRCENA | CORTEXM_DEMCR_VC_HARDERR |
+					CORTEXM_DEMCR_VC_CORERESET;
+				adiv5_mem_write(ap, CORTEXM_DEMCR, &demcr, sizeof(demcr));
+				platform_srst_set_val(false);
+				platform_timeout to;
+				platform_timeout_set(&to, 1000);
+				while ((adiv5_mem_read32(ap, CORTEXM_DHCSR)
+						& CORTEXM_DHCSR_S_RESET_ST) &&
+					   !platform_timeout_is_expired(&to)) {};
+#if defined(PLATFORM_HAS_DEBUG)
+				if (platform_timeout_is_expired(&to))
+					DEBUG_WARN("Probe: Reset seem to be stuck low!\n");
+#endif
+			}
 		}
 	}
 	return ap;
@@ -715,6 +736,18 @@ void adiv5_dp_init(ADIv5_DP_t *dp)
 
 		/* The rest should only be added after checking ROM table */
 		adiv5_component_probe(ap, ap->base, 0, 0);
+	}
+	if (dp->dp_release_ap) {
+		uint32_t demcr = 0;
+		adiv5_mem_write(dp->dp_release_ap, CORTEXM_DEMCR,
+						&demcr, sizeof(demcr));
+		if (connect_assert_srst) {
+			/* Get MCU going again. But as e.g. a STM32F7 with WFI is hard
+			   to halt, keep DBGMCU_CR settings until detach.*/
+			uint32_t dhcsr = CORTEXM_DHCSR_DBGKEY;
+			adiv5_mem_write(dp->dp_release_ap, CORTEXM_DHCSR,
+							&dhcsr, sizeof(dhcsr));
+		}
 	}
 	adiv5_dp_unref(dp);
 }

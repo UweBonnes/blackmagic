@@ -404,6 +404,8 @@ bool cortexm_attach(target *t)
 	unsigned i;
 	uint32_t r;
 
+	platform_srst_set_val(connect_assert_srst);
+
 	/* Clear any pending fault condition */
 	target_check_error(t);
 

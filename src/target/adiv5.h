@@ -170,6 +170,7 @@ typedef struct ADIv5_DP_s {
 		uint8_t fault;
 	};
 #endif
+	ADIv5_AP_t *dp_release_ap;
 } ADIv5_DP_t;
 
 struct ADIv5_AP_s {
