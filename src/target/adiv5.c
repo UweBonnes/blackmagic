@@ -306,6 +306,36 @@ uint64_t adiv5_ap_read_pidr(ADIv5_AP_t *ap, uint32_t addr)
 	return pidr;
 }
 
+/* For STM32 with ADIV5_DPv2 we already know the device.
+ * So already here we can and must allow debug in Sleep.
+ * Otherwise rom table read will
+ */
+static void stm32_prepare(ADIv5_AP_t *ap)
+{
+	/* This is very device specific and should perhaps go to the device file!*/
+	uint32_t dbgmcu_cr = 0;
+	uint32_t dbgmcu_cr_addr = 0xE0042004;
+	dbgmcu_cr |= 7;
+	switch ((ap->dp->targetid >> 16) & 0xfff) {
+	case 0x449:
+	case 0x451:
+	case 0x452:
+		dbgmcu_cr = 7;
+		break;
+	case 0x450:
+		dbgmcu_cr_addr = 0x5c001004;
+		dbgmcu_cr = 0x0060017f;
+	}
+	if (dbgmcu_cr) {
+		DEBUG_INFO("DBGMCU_CR start %08" PRIx32,
+				   adiv5_mem_read32(ap, dbgmcu_cr_addr));
+		adiv5_mem_write(ap, dbgmcu_cr_addr, &dbgmcu_cr,
+						sizeof(dbgmcu_cr));
+		DEBUG_INFO(",  %08" PRIx32 "\n",
+				   adiv5_mem_read32(ap, dbgmcu_cr_addr));
+	}
+}
+
 /* DHCSR, Romtables and SYSROM can be read out under reset. No need
  * to release reset here. However on a sleeping device, reading may fail.
  * Try to halt the device.
@@ -589,6 +619,8 @@ ADIv5_AP_t *adiv5_new_ap(ADIv5_DP_t *dp, uint8_t apsel)
 					DEBUG_WARN("Probe: Reset seem to be stuck low!\n");
 #endif
 			}
+			if ((ap->dp->targetid >> 1 & 0x7ff) == 0x20)
+				stm32_prepare(ap);
 		}
 	}
 	return ap;
