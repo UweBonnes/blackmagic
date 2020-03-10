@@ -377,6 +377,11 @@ static bool cortexm_prepare(ADIv5_AP_t *ap)
 			return false;
 		}
 	}
+	/* Enable Trace to see all debug units*/
+	uint32_t demcr =
+		CORTEXM_DEMCR_TRCENA | CORTEXM_DEMCR_VC_HARDERR |
+		CORTEXM_DEMCR_VC_CORERESET;
+	adiv5_mem_write(ap, CORTEXM_DEMCR, &demcr, sizeof(demcr));
 	if ((ap->dp->targetid >> 1 & 0x7ff) == 0x20) {
 		/* This is very device specific and should go to the device file!*/
 		uint32_t dbgmcu_cr = 0;
@@ -609,10 +614,6 @@ ADIv5_AP_t *adiv5_new_ap(ADIv5_DP_t *dp, uint8_t apsel)
 			 * Request halt on reset, deassert reset and wait until CPU no
 			 * longer sees the reset.
 			 */
-				uint32_t demcr =
-					CORTEXM_DEMCR_TRCENA | CORTEXM_DEMCR_VC_HARDERR |
-					CORTEXM_DEMCR_VC_CORERESET;
-				adiv5_mem_write(ap, CORTEXM_DEMCR, &demcr, sizeof(demcr));
 				platform_srst_set_val(false);
 				platform_timeout to;
 				platform_timeout_set(&to, 1000);
