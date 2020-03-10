@@ -182,6 +182,8 @@ struct ADIv5_AP_s {
 	uint32_t idr;
 	uint32_t base;
 	uint32_t csw;
+	uint16_t ap_designer;
+	uint16_t ap_partno;
 };
 
 #if PC_HOSTED == 0
