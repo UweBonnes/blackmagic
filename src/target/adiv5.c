@@ -467,6 +467,12 @@ static bool adiv5_component_probe(ADIv5_AP_t *ap, uint32_t addr, int recursion, 
 
 			if (entry == 0)
 				break;
+			/* FIXME: STM32G0 reads nonsense at 0xf000000 when
+			 * when Romtable is not scanned under reset.
+			 * Silence these messages until Fix/Reason is found.
+			 */
+			if (entry == 0x20006460)
+				break;
 
 			if (!(entry & ADIV5_ROM_ROMENTRY_PRESENT)) {
 				DEBUG_INFO("%s%d Entry 0x%" PRIx32 " -> Not present\n", indent,
