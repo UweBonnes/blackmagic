@@ -204,19 +204,19 @@ static void stm32f7_detach(target *t)
 bool stm32f4_probe(target *t)
 {
 	ADIv5_AP_t *ap = cortexm_ap(t);
-	uint32_t idcode;
-
-	idcode = (ap->dp->targetid >> 16) & 0xfff;
-	if (!idcode)
-		idcode = target_mem_read32(t, DBGMCU_IDCODE) & 0xFFF;
-
+	uint32_t idcode = ap->ap_partno;
 	if (idcode == ID_STM32F20X) {
-		/* F405 revision A have a wrong IDCODE, use ARM_CPUID to make the
-		 * distinction with F205. Revision is also wrong (0x2000 instead
-		 * of 0x1000). See F40x/F41x errata. */
-		uint32_t cpuid = target_mem_read32(t, ARM_CPUID);
-		if ((cpuid & 0xFFF0) == 0xC240)
-			idcode = ID_STM32F40X;
+		/* E.g. F412 has Romtable Pidr partno 0x411 same as F207.
+		 * Read MCU ID, availale also under Reset */
+		idcode = target_mem_read32(t, DBGMCU_IDCODE) & 0xFFF;
+		if (idcode == ID_STM32F20X) {
+			/* F405 revision A have a wrong IDCODE, use ARM_CPUID to make the
+			 * distinction with F205. Revision is also wrong (0x2000 instead
+			 * of 0x1000). See F40x/F41x errata. */
+			uint32_t cpuid = target_mem_read32(t, ARM_CPUID);
+			if ((cpuid & 0xFFF0) == 0xC240)
+				idcode = ID_STM32F40X;
+		}
 	}
 	switch(idcode) {
 	case ID_STM32F74X: /* F74x RM0385 Rev.4 */
@@ -238,6 +238,7 @@ bool stm32f4_probe(target *t)
 		t->driver = stm32f4_get_chip_name(idcode);
 		t->attach = stm32f4_attach;
 		target_add_commands(t, stm32f4_cmd_list, t->driver);
+		target_mem_write32(t, DBGMCU_CR, 7);
 		return true;
 	default:
 		return false;
