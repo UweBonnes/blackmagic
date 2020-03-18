@@ -373,11 +373,8 @@ static void stm32l4_detach(target *t)
 
 bool stm32l4_probe(target *t)
 {
-	uint32_t idcode_reg = STM32L4_DBGMCU_IDCODE_PHYS;
 	ADIv5_AP_t *ap = cortexm_ap(t);
-	if (ap->dp->idcode == 0x0BC11477)
-		idcode_reg = STM32G0_DBGMCU_IDCODE_PHYS;
-	uint32_t idcode = target_mem_read32(t, idcode_reg) & 0xfff;
+	uint32_t idcode = ap->ap_partno;
 
 	struct stm32l4_info const *chip = stm32l4_get_chip_info(idcode);
 
