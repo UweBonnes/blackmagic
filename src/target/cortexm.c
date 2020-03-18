@@ -393,6 +393,7 @@ bool cortexm_probe(ADIv5_AP_t *ap)
 		PROBE(stm32l0_probe);   /* STM32L0xx & STM32L1xx */
 		PROBE(stm32l4_probe);
 	} else {
+		PROBE(stm32f1_probe);   /* Care for Clones */
 		PROBE(lpc11xx_probe);
 		PROBE(lpc15xx_probe);
 		PROBE(lpc43xx_probe);

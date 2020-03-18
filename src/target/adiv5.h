@@ -87,6 +87,7 @@
 #define ADIV5_AP_IDR		ADIV5_AP_REG(0xFC)
 
 #define AP_DESIGNER_STM 0x20
+#define AP_DESIGNER_ARM 0x43b
 
 /* AP Control and Status Word (CSW) */
 #define ADIV5_AP_CSW_DBGSWENABLE	(1u << 31)
