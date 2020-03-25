@@ -31,6 +31,7 @@
 #include "adiv5.h"
 #include "cortexm.h"
 #include "exception.h"
+#include "gdb_packet.h"
 
 /* All this should probably be defined in a dedicated ADIV5 header, so that they
  * are consistently named and accessible when needed in the codebase.
@@ -449,8 +450,8 @@ static bool adiv5_component_probe(ADIv5_AP_t *ap, uint32_t addr, int recursion, 
 			DEBUG_WARN("Fault reading ROM table entry\n");
 		}
 
-		DEBUG_INFO("ROM: Table BASE=0x%" PRIx32 " SYSMEM=0x%" PRIx32 ", designer %3"
-			  PRIx32 " Partno %3" PRIx32 "\n", addr, memtype, designer,
+		DEBUG_INFO("ROM: Table BASE=0x%08" PRIx32 " SYSMEM=0x%08" PRIx32
+				   ", designer %3x Partno %3x\n", addr, memtype, designer,
 			  partno);
 #endif
 		if (recursion == 0) {
@@ -548,6 +549,11 @@ static bool adiv5_component_probe(ADIv5_AP_t *ap, uint32_t addr, int recursion, 
 					break;
 				default:
 					DEBUG_INFO("\n");
+#if PC_HOSTED == 0
+					if (ap->apsel == 0 && recursion == 0)
+						gdb_outf("Unknown ADIv5 Designer %3x Partno %3x\n",
+								 ap->ap_designer, ap->ap_partno);
+#endif
 					break;
 				}
 				break;
