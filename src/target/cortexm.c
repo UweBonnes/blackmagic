@@ -393,30 +393,37 @@ bool cortexm_probe(ADIv5_AP_t *ap)
 #define PROBE(x) \
 	do { if ((x)(t)) {target_halt_resume(t, 0); return true;} else target_check_error(t); } while (0)
 
-	if (ap->ap_designer == AP_DESIGNER_STM) {
-		PROBE(stm32f1_probe);
-		PROBE(stm32f4_probe);
-		PROBE(stm32h7_probe);
-		PROBE(stm32l0_probe);   /* STM32L0xx & STM32L1xx */
-		PROBE(stm32l4_probe);
-	} else {
-		PROBE(stm32f1_probe);   /* Care for Clones */
-		PROBE(lpc11xx_probe);
-		PROBE(lpc15xx_probe);
-		PROBE(lpc43xx_probe);
-		PROBE(sam3x_probe);
-		PROBE(sam4l_probe);
-		PROBE(nrf51_probe);
-		PROBE(samd_probe);
-		PROBE(samx5x_probe);
-		PROBE(lmi_probe);
-		PROBE(kinetis_probe);
-		PROBE(efm32_probe);
-		PROBE(msp432_probe);
-		PROBE(ke04_probe);
-		PROBE(lpc17xx_probe);
+	switch (ap->ap_designer) {
+        case AP_DESIGNER_STM:
+            PROBE(stm32f1_probe);
+            PROBE(stm32f4_probe);
+            PROBE(stm32h7_probe);
+            PROBE(stm32l0_probe);   /* STM32L0xx & STM32L1xx */
+            PROBE(stm32l4_probe);
+            break;
+        case AP_DESIGNER_ATMEL:
+            PROBE(sam4l_probe);
+            PROBE(samd_probe);
+            PROBE(samx5x_probe);
+            break;
+        case AP_DESIGNER_ARM:
+			if (ap->ap_partno == 0x4c3)
+				PROBE(stm32f1_probe);
+            PROBE(sam3x_probe);
+            break;
+        default:
+            PROBE(lpc11xx_probe);
+            PROBE(lpc15xx_probe);
+            PROBE(lpc43xx_probe);
+            PROBE(nrf51_probe);
+            PROBE(lmi_probe);
+            PROBE(kinetis_probe);
+            PROBE(efm32_probe);
+            PROBE(msp432_probe);
+            PROBE(ke04_probe);
+            PROBE(lpc17xx_probe);
+        }
 #undef PROBE
-	}
 	return true;
 }
 
