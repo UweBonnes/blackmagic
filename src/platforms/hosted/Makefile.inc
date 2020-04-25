@@ -9,22 +9,29 @@ LDFLAGS += -lasan
 else ifneq (, $(findstring mingw, $(SYS)))
 SRC += 	 serial_win.c
 LDFLAGS += -lws2_32
-LDFLAGS += -lhid -lsetupapi
+LDFLAGS += -lsetupapi
 else ifneq (, $(findstring cygwin, $(SYS)))
 SRC += 	 serial_win.c
 LDFLAGS += -lws2_32
-LDFLAGS += -lhid -lsetupapi
+LDFLAGS += -lsetupapi
 #https://github.com/dmlc/xgboost/issues/1945 indicates macosx as indicator
 else ifneq (filter, macosx darwin, $(SYS)))
-LDFLAGS += -lhid -lsetupapi
+LDFLAGS += -lsetupapi
 LDFLAGS += hidapi/mac/.libs/libhidapi.a -framework IOKit
 LDFLAGS += -framework CoreFoundation hidapi/mac/.libs/libhidapi.a
 CFLAGS += -Ihidapi/hidapi
 endif
 
 LDFLAGS += -lusb-1.0
-CFLAGS += $(shell pkg-config --cflags libftdi1)
-LDFLAGS += $(shell pkg-config --libs libftdi1)
+CFLAGS += $(shell $(PKG_CONFIG) --cflags libftdi1)
+LDFLAGS += $(shell $(PKG_CONFIG) --libs libftdi1)
+
+ifeq ($(shell $(PKG_CONFIG) --exists hidapi-libusb && echo 0), 0)
+CFLAGS += $(shell $(PKG_CONFIG) --cflags hidapi-libusb)
+LDFLAGS += $(shell $(PKG_CONFIG) --libs hidapi-libusb)
+CFLAGS  +=  -DCMSIS_DAP
+SRC += cmsis_dap.c dap.c
+endif
 
 VPATH += platforms/pc
 SRC += timing.c cl_utils.c utils.c libusb_utils.c
