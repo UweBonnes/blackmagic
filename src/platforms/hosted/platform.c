@@ -40,6 +40,10 @@
 #define VENDOR_ID_BMP            0x1d50
 #define PRODUCT_ID_BMP           0x6018
 
+#if (__WIN32) || (_WIN32)
+#define BMP_IF_GDB				0
+#endif
+
 #define VENDOR_ID_STLINK         0x0483
 #define PRODUCT_ID_STLINK_MASK   0xffe0
 #define PRODUCT_ID_STLINK_GROUP  0x3740
@@ -85,7 +89,107 @@ static void sigterm_handler(int sig)
 	exit(0);
 }
 
-static int find_debuggers(	BMP_CL_OPTIONS_t *cl_opts,bmp_info_t *info)
+#if (__WIN32) || (_WIN32)
+static char winComPort[64] = {0};
+static void find_debuggers_windows(BMP_CL_OPTIONS_t *cl_opts, bmp_info_t *info, int *foundDebuggers)
+{
+	char regpath[128], subkey[128], portname[128], basename[128], *ptr;
+	HKEY hkeySection, hkeyItem;
+	uint32_t idx_device, maxlen;
+
+	memset(regpath, 0x00, sizeof(regpath));
+	/* find the device path for the Black Magic Probes*/
+	sprintf(regpath, "SYSTEM\\CurrentControlSet\\Enum\\USB\\VID_%04X&PID_%04X&MI_%02X",
+			  VENDOR_ID_BMP, PRODUCT_ID_BMP, BMP_IF_GDB);
+	if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, regpath, 0, KEY_READ, &hkeySection) != ERROR_SUCCESS) {
+		return ;
+	}
+	/* Now we need to enumerate all the keys below the device path because more
+     than a single BMP may have been connected to this computer.
+     */
+	idx_device = 0;
+	while (1)
+	{
+		HKEY hkeySerialComm;
+		int idx;
+		/* find the sub-key */
+		maxlen = sizeof(subkey);
+		if (RegEnumKeyEx(hkeySection, idx_device, subkey, (LPDWORD)&maxlen, NULL, NULL, NULL, NULL) != ERROR_SUCCESS)
+		{
+			RegCloseKey(hkeySection);
+			return ;
+		}
+		/* add the fixed portion & open the key to the item */
+		strcat(subkey, "\\Device Parameters");
+		if (RegOpenKeyEx(hkeySection, subkey, 0, KEY_READ, &hkeyItem) != ERROR_SUCCESS)
+		{
+			RegCloseKey(hkeySection);
+			return ;
+		}
+		/* read the port name setting */
+		maxlen = sizeof(portname);
+		memset(portname, 0, maxlen);
+		if (RegQueryValueEx(hkeyItem, "PortName", NULL, NULL, (LPBYTE)portname, (LPDWORD)&maxlen) != ERROR_SUCCESS)
+		{
+			RegCloseKey(hkeyItem);
+			RegCloseKey(hkeySection);
+			return ;
+		}
+		RegCloseKey(hkeyItem);
+		/* clean up the port name and check that it looks correct (for a COM port) */
+		if ((ptr = strchr(portname, '\\')) != NULL)
+			strcpy(basename, ptr + 1); /* skip '\\.\', if present */
+		else
+			strcpy(basename, portname);
+		for (idx = 0; basename[idx] != '\0' && (basename[idx] < '0' || basename[idx] > '9'); idx++)
+			/* nothing */;
+		if (basename[idx] == '\0')
+		{ /* there is no digit in the port name, this can't be right */
+			RegCloseKey(hkeySection);
+			return ;
+		}
+
+		/* Check if this probe is connected, if it is gather info
+			and increment the found counter */
+		if (RegOpenKeyEx(HKEY_LOCAL_MACHINE, "HARDWARE\\DEVICEMAP\\SERIALCOMM", 0,
+						 KEY_READ, &hkeySerialComm) != ERROR_SUCCESS)
+		{
+			RegCloseKey(hkeySection);
+			return ; /* no COM ports at all! */
+		}
+		for (idx = 0; ; idx++)
+		{
+			char value[128];
+			uint32_t valsize;
+			maxlen = sizeof(portname);
+			valsize = sizeof(value);
+			if (RegEnumValue(hkeySerialComm, idx, portname, (LPDWORD)&maxlen, NULL, NULL, (LPBYTE)value, (LPDWORD)&valsize) != ERROR_SUCCESS)
+				break;
+			if ((ptr = strchr(value, '\\')) != NULL)
+				ptr += 1; /* skip '\\.\', if present */
+			else
+				ptr = value;
+			if (strcmp(ptr, basename) == 0) {
+				*foundDebuggers += 1;
+				//
+				// Add info to passed structure
+				//
+				info->bmp_type = BMP_TYPE_BMP;
+				info->vid = VENDOR_ID_BMP;
+				info->pid = PRODUCT_ID_BMP;
+				strcpy(info->serial, basename);
+				strcpy(winComPort, basename);
+				cl_opts->opt_device = winComPort;
+			}
+		}
+		RegCloseKey(hkeySerialComm);
+		idx_device += 1;
+	}
+	RegCloseKey(hkeySection);
+}
+#endif
+
+static int find_debuggers(BMP_CL_OPTIONS_t *cl_opts, bmp_info_t *info)
 {
 	libusb_device **devs;
 	int n_devs = libusb_get_device_list(info->libusb_ctx, &devs);
@@ -198,6 +302,9 @@ static int find_debuggers(	BMP_CL_OPTIONS_t *cl_opts,bmp_info_t *info)
 			break;
 		}
 	}
+#if (__WIN32) || (_WIN32)
+	find_debuggers_windows(cl_opts, info, &found_debuggers);
+#endif
 	if (found_debuggers > 1) {
 		if (!report) {
 			DEBUG_WARN("%d debuggers found! Select with -P <num>, -s <string> "
