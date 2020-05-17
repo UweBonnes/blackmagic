@@ -2,8 +2,8 @@
  * This file is part of the Black Magic Debug project.
  *
  * Copyright (C) 2012  Black Sphere Technologies Ltd.
- * Written by Gareth McMullin <gareth@blacksphere.co.nz>
- * and Koen De Vleeschauwer.
+ * Written by Gareth McMullin <gareth@blacksphere.co.nz>,
+ * Koen De Vleeschauwer and Uwe Bonne
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -71,7 +71,7 @@ static target_addr cortexm_check_watch(target *t);
 
 static int cortexm_hostio_request(target *t);
 
-#if !defined(PC_HOSTED)
+#if PC_HOSTED == 0
 static uint32_t time0_sec = UINT32_MAX; /* sys_clock time origin */
 #endif
 
@@ -280,7 +280,7 @@ bool cortexm_probe(ADIv5_AP_t *ap, bool forced)
 	uint32_t identity = ap->idr & 0xff;
 	struct cortexm_priv *priv = calloc(1, sizeof(*priv));
 	if (!priv) {			/* calloc failed: heap exhaustion */
-		DEBUG("calloc: failed in %s\n", __func__);
+		DEBUG_WARN("calloc: failed in %s\n", __func__);
 		return false;
 	}
 
@@ -641,7 +641,7 @@ static void cortexm_reset(target *t)
 		   !platform_timeout_is_expired(&to));
 #if defined(PLATFORM_HAS_DEBUG)
 	if (platform_timeout_is_expired(&to))
-		DEBUG("Reset seem to be stuck low!\n");
+		DEBUG_WARN("Reset seem to be stuck low!\n");
 #endif
 	/* 10 ms delay to ensure that things such as the STM32 HSI clock
 	 * have started up fully. */
@@ -1050,14 +1050,14 @@ static bool cortexm_vector_catch(target *t, int argc, char *argv[])
 #define SYS_WRITEC	0x03
 #define SYS_WRITE0	0x04
 
-#if !defined(PC_HOSTED)
+#if PC_HOSTED == 0
 /* probe memory access functions */
 static void probe_mem_read(target *t __attribute__((unused)), void *probe_dest, target_addr target_src, size_t len)
 {
 	uint8_t *dst = (uint8_t *)probe_dest;
 	uint8_t *src = (uint8_t *)target_src;
 
-	DEBUG("probe_mem_read\n");
+	DEBUG_INFO("probe_mem_read\n");
 	while (len--) *dst++=*src++;
 	return;
 }
@@ -1067,7 +1067,7 @@ static void probe_mem_write(target *t __attribute__((unused)), target_addr targe
 	uint8_t *dst = (uint8_t *)target_dest;
 	uint8_t *src = (uint8_t *)probe_src;
 
-	DEBUG("probe_mem_write\n");
+	DEBUG_INFO("probe_mem_write\n");
 	while (len--) *dst++=*src++;
 	return;
 }
@@ -1083,7 +1083,7 @@ static int cortexm_hostio_request(target *t)
 	uint32_t syscall = arm_regs[0];
 	int32_t ret = 0;
 
-	DEBUG("syscall 0"PRIx32"%"PRIx32" (%"PRIx32" %"PRIx32" %"PRIx32" %"PRIx32")\n",
+	DEBUG_INFO("syscall 0"PRIx32"%"PRIx32" (%"PRIx32" %"PRIx32" %"PRIx32" %"PRIx32")\n",
               syscall, params[0], params[1], params[2], params[3]);
 	switch (syscall) {
 	case SYS_OPEN:{	/* open */
@@ -1171,7 +1171,7 @@ static int cortexm_hostio_request(target *t)
 		break;
 
 	case SYS_FLEN:
-#if defined(PC_HOSTED)
+#if PC_HOSTED == 1
 		 t->tc->errno_ = 0;
 		 break;
 #else
