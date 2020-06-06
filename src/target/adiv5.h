@@ -89,6 +89,7 @@
 #define AP_DESIGNER_ATMEL 0x1f
 #define AP_DESIGNER_STM 0x20
 #define AP_DESIGNER_ARM 0x43b
+#define AP_DESIGNER_ENERGY_MICRO 0x673
 
 /* AP Control and Status Word (CSW) */
 #define ADIV5_AP_CSW_DBGSWENABLE	(1u << 31)
