@@ -485,15 +485,14 @@ static bool adiv5_component_probe(ADIv5_AP_t *ap, uint32_t addr, int recursion, 
 							   cidc_debug_strings[cid_class],
 							   cidc_debug_strings[pidr_pn_bits[i].cidc]);
 				}
-				res = true;
 				switch (pidr_pn_bits[i].arch) {
 				case aa_cortexm:
 					DEBUG_INFO("%s-> cortexm_probe\n", indent + 1);
-					cortexm_probe(ap);
+					res = cortexm_probe(ap);
 					break;
 				case aa_cortexa:
 					DEBUG_INFO("\n -> cortexa_probe\n");
-					cortexa_probe(ap, addr);
+					res = cortexa_probe(ap, addr);
 					break;
 				default:
 					DEBUG_INFO("\n");
@@ -569,6 +568,7 @@ ADIv5_AP_t *adiv5_new_ap(ADIv5_DP_t *dp, uint8_t apsel)
 				return NULL;
 			}
 			dp->dp_release_ap = ap;
+			adiv5_ap_ref(ap);
 			if (connect_assert_srst) {
 			/* E.g. STM32L0 does not allow reading the romtable under reset.
 			 * Request halt on reset, deassert reset and wait until CPU no
@@ -587,6 +587,7 @@ ADIv5_AP_t *adiv5_new_ap(ADIv5_DP_t *dp, uint8_t apsel)
 			}
 		}
 	}
+	adiv5_ap_ref(ap);
 	return ap;
 }
 
@@ -732,6 +733,7 @@ void adiv5_dp_init(ADIv5_DP_t *dp)
 
 		/* The rest should only be added after checking ROM table */
 		adiv5_component_probe(ap, ap->base, 0, 0);
+		adiv5_ap_unref(ap);
 	}
 	if (dp->dp_release_ap) {
 		uint32_t demcr = 0;
@@ -744,6 +746,7 @@ void adiv5_dp_init(ADIv5_DP_t *dp)
 			adiv5_mem_write(dp->dp_release_ap, CORTEXM_DHCSR,
 							&dhcsr, sizeof(dhcsr));
 		}
+		adiv5_ap_unref(dp->dp_release_ap);
 	}
 	adiv5_dp_unref(dp);
 }
