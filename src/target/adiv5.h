@@ -86,6 +86,8 @@
 #define ADIV5_AP_BASE		ADIV5_AP_REG(0xF8)
 #define ADIV5_AP_IDR		ADIV5_AP_REG(0xFC)
 
+/* Ignore Bit 7 from the designer bits*/
+#define AP_DESIGNER_TEXAS 0x17
 #define AP_DESIGNER_ATMEL 0x1f
 #define AP_DESIGNER_STM 0x20
 #define AP_DESIGNER_ARM 0x43b
