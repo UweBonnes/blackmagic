@@ -8,8 +8,8 @@ CFLAGS +=-I ./target -I./platforms/pc
 # == 1 makes linking against the libftdi and libusb libraries unnecessary.
 # This can be useful to minimize external dependencies, and make building on
 # windows systems easier and is default now.
-#HOSTED_BMP_ONLY ?= 1
-#!!!LOCAL!!! build full hosted !!!LOCAL!!!
+
+#Full build as default for development
 HOSTED_BMP_ONLY ?= 0
 CFLAGS  +=  -DHOSTED_BMP_ONLY=$(HOSTED_BMP_ONLY)
 
