@@ -18,28 +18,46 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __SWDPTAP_H
-#define __SWDPTAP_H
+/* This file implements the platform specific functions for the ST-Link
+ * implementation.
+ */
+#include "mbed.h"
+#include "bmp_platform.h"
+#include "gdb_if.h"
 
-#ifdef __cplusplus
+AnalogIn	ainVTarget(PC_0);
+
+
 extern "C" {
-#endif
+// uint16_t led_idle_run;
+// uint16_t srst_pin;
 
-typedef struct swd_proc_s {
-	uint32_t (*swdptap_seq_in)(int ticks);
-	bool (*swdptap_seq_in_parity)(uint32_t *data, int ticks);
-	void (*swdptap_seq_out)(uint32_t MS, int ticks);
-	void (*swdptap_seq_out_parity)(uint32_t MS, int ticks);
-} swd_proc_t;
-extern swd_proc_t swd_proc;
+//static void adc_init(void);
 
-# if PC_HOSTED == 1 && !defined(__MBED__)
-int platform_swdptap_init(void);
-# else
-int swdptap_init(void);
-# endif
-#endif
-
-#ifdef __cplusplus
+int platform_hwversion(void)
+{
+	return 0;
 }
-#endif
+
+void platform_init()
+{
+	printf("platform init()\n");
+	
+	gdb_if_init();
+}
+
+void platform_srst_set_val(bool assert)
+{
+}
+
+bool platform_srst_get_val()
+{
+	return false;
+}
+
+const char *platform_target_voltage(void)
+{
+	return 0;
+}
+
+} // extern "C"

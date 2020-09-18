@@ -47,7 +47,7 @@ int gdb_getpacket(char *packet, int size)
 				packet[0] = gdb_if_getchar();
 				if (packet[0]==0x04) return 1;
 			} while ((packet[0] != '$') && (packet[0] != REMOTE_SOM));
-#if PC_HOSTED == 0
+#if (PC_HOSTED == 0) && !defined(__MBED__)
 			if (packet[0]==REMOTE_SOM) {
 				/* This is probably a remote control packet
 				 * - get and handle it */
@@ -117,15 +117,17 @@ int gdb_getpacket(char *packet, int size)
 	}
 	gdb_if_putchar('+', 1); /* send ack */
 	packet[i] = 0;
+	//printf("R %d:'%s'\n", i, packet);
 
-#if PC_HOSTED == 1
+#if (PC_HOSTED == 1)
 	DEBUG_GDB_WIRE("%s : ", __func__);
 	for(int j = 0; j < i; j++) {
 		c = packet[j];
-		if ((c >= 32) && (c < 127))
+		if ((c >= 32) && (c < 127)) {
 			DEBUG_GDB_WIRE("%c", c);
-		else
+		} else {
 			DEBUG_GDB_WIRE("\\x%02X", c);
+		}
 	}
 	DEBUG_GDB_WIRE("\n");
 #endif
@@ -147,10 +149,11 @@ void gdb_putpacket(const char *packet, int size)
 		for(i = 0; i < size; i++) {
 			c = packet[i];
 #if PC_HOSTED == 1
-			if ((c >= 32) && (c < 127))
+			if ((c >= 32) && (c < 127)) {
 				DEBUG_GDB_WIRE("%c", c);
-			else
+			} else {
 				DEBUG_GDB_WIRE("\\x%02X", c);
+			}
 #endif
 			if((c == '$') || (c == '#') || (c == '}')) {
 				gdb_if_putchar('}', 0);

@@ -21,6 +21,10 @@
 #ifndef __JTAGTAP_H
 #define __JTAGTAP_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct jtag_proc_s {
 /* Note: Signal names are as for the device under test. */
 
@@ -64,10 +68,14 @@ extern jtag_proc_t jtag_proc;
 #define jtagtap_return_idle()	\
 	jtag_proc.jtagtap_tms_seq(0x01, 2)
 
-# if PC_HOSTED == 1
+# if PC_HOSTED == 1 && !defined(__MBED__)
 int platform_jtagtap_init(void);
 # else
 int jtagtap_init(void);
 # endif
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 

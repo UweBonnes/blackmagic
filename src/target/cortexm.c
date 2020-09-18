@@ -33,7 +33,7 @@
 #include "target.h"
 #include "target_internal.h"
 #include "cortexm.h"
-#include "platform.h"
+#include "bmp_platform.h"
 #include "command.h"
 
 #include <unistd.h>

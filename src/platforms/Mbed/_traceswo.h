@@ -1,7 +1,7 @@
 /*
  * This file is part of the Black Magic Debug project.
  *
- * Copyright (C) 2011  Black Sphere Technologies Ltd.
+ * Copyright (C) 2012  Black Sphere Technologies Ltd.
  * Written by Gareth McMullin <gareth@blacksphere.co.nz>
  *
  * This program is free software: you can redistribute it and/or modify
@@ -17,29 +17,25 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
+#ifndef __TRACESWO_H
+#define __TRACESWO_H
 
-#ifndef __SWDPTAP_H
-#define __SWDPTAP_H
-
-#ifdef __cplusplus
-extern "C" {
+#if defined TRACESWO_PROTOCOL && TRACESWO_PROTOCOL == 2
+/* Default line rate, used as default for a request without baudrate */
+#define SWO_DEFAULT_BAUD (2250000)
+void traceswo_init(uint32_t baudrate, uint32_t swo_chan_bitmask);
+#else
+void traceswo_init(uint32_t swo_chan_bitmask);
 #endif
 
-typedef struct swd_proc_s {
-	uint32_t (*swdptap_seq_in)(int ticks);
-	bool (*swdptap_seq_in_parity)(uint32_t *data, int ticks);
-	void (*swdptap_seq_out)(uint32_t MS, int ticks);
-	void (*swdptap_seq_out_parity)(uint32_t MS, int ticks);
-} swd_proc_t;
-extern swd_proc_t swd_proc;
+//void trace_buf_drain(usbd_device *dev, uint8_t ep);
+void trace_buf_drain(void *dev, uint8_t ep);
 
-# if PC_HOSTED == 1 && !defined(__MBED__)
-int platform_swdptap_init(void);
-# else
-int swdptap_init(void);
-# endif
-#endif
+/* set bitmask of swo channels to be decoded */
+void traceswo_setmask(uint32_t mask);
 
-#ifdef __cplusplus
-}
+/* print decoded swo packet on usb serial */
+uint16_t traceswo_decode(void *usbd_dev, uint8_t addr,
+				const void *buf, uint16_t len);
+
 #endif

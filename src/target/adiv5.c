@@ -306,12 +306,12 @@ static bool adiv5_component_probe(ADIv5_AP_t *ap, uint32_t addr, int recursion, 
 	uint64_t pidr = adiv5_ap_read_pidr(ap, addr);
 	uint32_t cidr = adiv5_ap_read_id(ap, addr + CIDR0_OFFSET);
 	bool res = false;
-#if defined(ENABLE_DEBUG)
+//#if defined(ENABLE_DEBUG)
 	char indent[recursion + 1];
 
 	for(int i = 0; i < recursion; i++) indent[i] = ' ';
 	indent[recursion] = 0;
-#endif
+//#endif
 
 	if (adiv5_dp_error(ap->dp)) {
 		DEBUG_WARN("%sFault reading ID registers\n", indent);

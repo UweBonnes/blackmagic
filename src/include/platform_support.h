@@ -20,6 +20,10 @@
 #ifndef __PLATFORM_SUPPORT_H
 #define __PLATFORM_SUPPORT_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef __GENERAL_H
 #	error "Include 'general.h' instead"
 #endif
@@ -45,6 +49,10 @@ bool platform_srst_get_val(void);
 bool platform_target_get_power(void);
 void platform_target_set_power(bool power);
 void platform_request_boot(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
 
