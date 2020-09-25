@@ -63,6 +63,7 @@ int adiv5_swdp_scan(void)
 	swd_proc.swdptap_seq_out(0xE79E, 16); /* 0b0111100111100111 */
 	swd_proc.swdptap_seq_out(0xFFFFFFFF, 32);
 	swd_proc.swdptap_seq_out(0xFFFFFFFF, 18);
+
 	swd_proc.swdptap_seq_out(0, 16);
 
 	/* Read the SW-DP IDCODE register to syncronise */
@@ -146,22 +147,36 @@ uint32_t firmware_swdp_low_access(ADIv5_DP_t *dp, uint8_t RnW,
 	do {
 		swd_proc.swdptap_seq_out(request, 8);
 		ack = swd_proc.swdptap_seq_in(3);
+		if (ack == SWDP_ACK_FAULT) {
+			/* On fault, abort() and repeat the command once.*/
+			printf("reapeat fix\n");
+			firmware_swdp_error(dp);
+			swd_proc.swdptap_seq_out(request, 8);
+			ack = swd_proc.swdptap_seq_in(3);
+		}	
 	} while (ack == SWDP_ACK_WAIT && !platform_timeout_is_expired(&timeout));
 
-	if (ack == SWDP_ACK_WAIT)
+	if (ack == SWDP_ACK_WAIT) {
+		printf("*** ACK Timeout ***        RnW:%d  addr:%d  value:%ld\n", RnW, addr, value);
 		raise_exception(EXCEPTION_TIMEOUT, "SWDP ACK timeout");
+	}
 
 	if(ack == SWDP_ACK_FAULT) {
 		dp->fault = 1;
 		return 0;
 	}
 
-	if(ack != SWDP_ACK_OK)
+	if(ack != SWDP_ACK_OK) {
+		printf("*** ACK Error ***      RnW:%d  addr:%d  value:%ld\n", RnW, addr, value);
 		raise_exception(EXCEPTION_ERROR, "SWDP invalid ACK");
+	}
 
 	if(RnW) {
 		if(swd_proc.swdptap_seq_in_parity(&response, 32))  /* Give up on parity error */
+		{
+			printf("*** Parity Error ***   RnW:%d  addr:%d  value:%ld\n", RnW, addr, value);
 			raise_exception(EXCEPTION_ERROR, "SWDP Parity error");
+		}
 	} else {
 		swd_proc.swdptap_seq_out_parity(value, 32);
 		/* RM0377 Rev. 8 Chapter 27.5.4 for STM32L0x1 states:
