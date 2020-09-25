@@ -48,7 +48,7 @@ enum BMP_DEBUG {
 	BMP_DEBUG_STDOUT = 0x8000,
 };
 
-#if PC_HOSTED == 0
+#if (PC_HOSTED == 0) &&  !defined(__MBED__) 
 /* For BMP debug output on a firmware BMP platform, using
  * BMP PC-Hosted is the preferred way. Printing DEBUG_WARN
  * and DEBUG_INFO is kept for comptibiluty.
