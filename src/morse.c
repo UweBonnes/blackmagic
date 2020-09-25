@@ -59,7 +59,7 @@ static char morse_repeat;
 
 void morse(const char *msg, char repeat)
 {
-#if PC_HOSTED == 1
+#if (PC_HOSTED == 1) ||  defined(__MBED__)
 	if (msg)
 		DEBUG_WARN("%s\n", msg);
 	(void) repeat;
