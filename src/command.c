@@ -29,6 +29,7 @@
 #include "target.h"
 #include "morse.h"
 #include "version.h"
+#include "serialno.h"
 
 #ifdef PLATFORM_HAS_TRACESWO
 #	include "traceswo.h"
@@ -256,9 +257,18 @@ bool cmd_swdp_scan(target *t, int argc, char **argv)
 static void display_target(int i, target *t, void *context)
 {
 	(void)context;
-	gdb_outf("%2d   %c  %s %s\n", i, target_attached(t)?'*':' ',
-			 target_driver_name(t),
-			 (target_core_name(t)) ? target_core_name(t): "");
+	if (!strcmp(target_driver_name(t), "ARM Cortex-M")) {
+		gdb_outf("***%2d%sUnknown %s Designer %3x Partno %3x %s\n",
+				 i, target_attached(t)?" * ":" ",
+				 target_driver_name(t),
+				 target_designer(t),
+				 target_idcode(t),
+				 (target_core_name(t)) ? target_core_name(t): "");
+	} else {
+		gdb_outf("%2d   %c  %s %s\n", i, target_attached(t)?'*':' ',
+				 target_driver_name(t),
+				 (target_core_name(t)) ? target_core_name(t): "");
+	}
 }
 
 bool cmd_targets(target *t, int argc, char **argv)
@@ -367,7 +377,7 @@ static bool cmd_target_power(target *t, int argc, const char **argv)
 #ifdef PLATFORM_HAS_TRACESWO
 static bool cmd_traceswo(target *t, int argc, const char **argv)
 {
-	extern char *serial_no;
+	char serial_no[13];
 	(void)t;
 #if TRACESWO_PROTOCOL == 2
 	uint32_t baudrate = SWO_DEFAULT_BAUD;
@@ -413,6 +423,7 @@ static bool cmd_traceswo(target *t, int argc, const char **argv)
 #else
 	traceswo_init(swo_channelmask);
 #endif
+	serial_no_read(serial_no, sizeof(serial_no));
 	gdb_outf("%s:%02X:%02X\n", serial_no, 5, 0x85);
 	return true;
 }
