@@ -25,28 +25,26 @@
 #include "general.h"
 #include "swdptap.h"
 
-DigitalOut 	swdClk(PB_7, 0);
-DigitalInOut swdDIO(PB_8, PIN_OUTPUT, PullNone, 0);
-
 enum {
 	SWDIO_STATUS_FLOAT = 0,
 	SWDIO_STATUS_DRIVE
 };
 
 extern "C" {
-static void swdptap_turnaround(int dir) __attribute__ ((optimize(3)));
-static uint32_t swdptap_seq_in(int ticks) __attribute__ ((optimize(3)));
-static bool swdptap_seq_in_parity(uint32_t *ret, int ticks)
-	__attribute__ ((optimize(3)));
-static void swdptap_seq_out(uint32_t MS, int ticks)
-	__attribute__ ((optimize(3)));
-static void swdptap_seq_out_parity(uint32_t MS, int ticks)
-	__attribute__ ((optimize(3)));
+static void swdptap_turnaround(int dir) __attribute__ ((optimize(1)));
+static uint32_t swdptap_seq_in(int ticks) __attribute__ ((optimize(1)));
+static bool swdptap_seq_in_parity(uint32_t *ret, int ticks)	__attribute__ ((optimize(1)));
+static void swdptap_seq_out(uint32_t MS, int ticks)	__attribute__ ((optimize(1)));
+static void swdptap_seq_out_parity(uint32_t MS, int ticks)	__attribute__ ((optimize(1)));
 }
+
+#if 0
+DigitalOut 	swdClk(PB_7, 0);
+DigitalInOut swdDIO(PB_8, PIN_OUTPUT, PullNone, 1);
 
 static void swdptap_turnaround(int dir)
 {
-	static int olddir = SWDIO_STATUS_FLOAT;
+	static int olddir = SWDIO_STATUS_DRIVE;
 
 	/* Don't turnaround if direction not changing */
 	if(dir == olddir) return;
@@ -56,14 +54,18 @@ static void swdptap_turnaround(int dir)
 	DEBUG("%s", dir ? "\n-> ":"\n<- ");
 #endif
 
+	//printf("turn %d\n", dir);
 	if(dir == SWDIO_STATUS_FLOAT) {
 		swdDIO.input();
 	}
+	
 	swdClk = 1;
 	swdClk = 0;
+
 	if(dir == SWDIO_STATUS_DRIVE) {
 		swdDIO.output();
 	}
+
 }
 
 static uint32_t swdptap_seq_in(int ticks)
@@ -74,8 +76,7 @@ static uint32_t swdptap_seq_in(int ticks)
 
 	swdptap_turnaround(SWDIO_STATUS_FLOAT);
 	while (len--) {
-		int res;
-		res = swdDIO;
+		int res = swdDIO;
 		swdClk = 1;
 		if (res)
 			ret |= index;
@@ -110,15 +111,15 @@ static bool swdptap_seq_in_parity(uint32_t *ret, int ticks)
 	int parity = __builtin_popcount(res);
 	bit = swdDIO;
 	swdClk = 1;
-	if (bit)
+	if (bit) {
 		parity++;
-	else
-		swdClk = 1;
+	}
 	swdClk = 0;
-#ifdef DEBUG_SWD_BITS
-	for (int i = 0; i < len; i++)
-		DEBUG("%d", (res & (1 << i)) ? 1 : 0);
-#endif
+//#ifdef DEBUG_SWD_BITS
+	for (int i = 0; i < len; i++) {
+		DEBUG_GDB_WIRE("%d", (res & (1 << i)) ? 1 : 0);
+	}
+//#endif
 	*ret = res;
 	return (parity & 1);
 }
@@ -159,6 +160,91 @@ static void swdptap_seq_out_parity(uint32_t MS, int ticks)
 	swdClk = 1;
 	swdClk = 0;
 }
+#else
+DigitalOut 	swdClk(PB_7, 0);
+DigitalInOut swdDIO(PB_8, PIN_OUTPUT, PullNone, 1);
+
+static void swdptap_turnaround(int dir)
+{
+	static int olddir = SWDIO_STATUS_DRIVE;
+
+	/* Don't turnaround if direction not changing */
+	if(dir == olddir) return;
+	olddir = dir;
+
+#ifdef DEBUG_SWD_BITS
+	DEBUG("%s", dir ? "\n-> ":"\n<- ");
+#endif
+
+	//printf("turn %d\n", dir);
+	if (dir == SWDIO_STATUS_FLOAT) {
+		swdDIO.input();
+	}
+	
+	swdClk = 1;
+	swdClk = 0;
+
+	if (dir == SWDIO_STATUS_DRIVE) {
+		swdDIO.output();
+	}
+}
+
+static uint32_t swdptap_seq_in(int ticks)
+{
+	uint32_t index = 1;
+	uint32_t ret = 0;
+	int len = ticks;
+
+	swdptap_turnaround(SWDIO_STATUS_FLOAT);
+	while (len--) {
+		int val = swdDIO & 1;
+		if (val)
+			ret |= index;
+		index <<= 1;
+		swdClk = 1;
+		swdClk = 0;
+	}
+
+	return ret;
+}
+
+static bool swdptap_seq_in_parity(uint32_t *ret, int ticks)
+{
+	*ret = swdptap_seq_in(ticks);
+
+	int parity = __builtin_popcount(*ret);
+	int parity_bit = swdDIO & 1;
+	if (parity_bit) {
+		parity++;
+	}
+	swdClk = 1;
+	swdClk = 0;
+
+	return (parity & 1);
+}
+
+static void swdptap_seq_out(uint32_t MS, int ticks)
+{
+	swdptap_turnaround(SWDIO_STATUS_DRIVE);
+
+	while (ticks--) {
+		swdDIO = MS & 1;
+		MS >>= 1;
+		swdClk = 1;
+		swdClk = 0;
+	}
+}
+
+static void swdptap_seq_out_parity(uint32_t MS, int ticks)
+{
+	int parity = __builtin_popcount(MS);
+
+	swdptap_seq_out(MS, ticks);
+	swdDIO = parity & 1;
+	swdClk = 1;
+	swdClk = 0;
+}
+#endif
 
 swd_proc_t swd_proc;
 
