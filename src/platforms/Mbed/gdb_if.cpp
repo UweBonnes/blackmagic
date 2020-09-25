@@ -24,42 +24,33 @@
  */
 
 #include "mbed.h"
-#include "myEthernet.h"
+#include "NetworkInterface.h"
 
 #include "general.h"
 #include "gdb_if.h"
 
 #define DEFAULT_PORT 2000
 
+NetworkInterface* network;
 static int16_t port = DEFAULT_PORT;
 static TCPSocket *sockServer;
 static TCPSocket *sockClient = nullptr;
 
-static void serverStateChanged() 
-{
-    printf("sockServer state changed\n");
-    if (sockServer == nullptr) {
-        return;
-    }
-    
-    nsapi_error_t error = NSAPI_ERROR_OK;
-    sockClient = sockServer->accept(&error);
-    if (sockClient && (error == NSAPI_ERROR_OK)) {
-        SocketAddress sockAddrClient;
-        sockClient->getpeername(&sockAddrClient);
-        printf("connected to %s\n", sockAddrClient.get_ip_address());
-
-        // string msg = "Hello from Mbed\n";
-        // sockClient->send(msg.c_str(), msg.length());
-
-        // sockClient->close();
-        // printf("client connection closed\n");
-    }
-}
 
 static void startServer()
 {
     nsapi_error_t error = NSAPI_ERROR_OK;
+    // Connect to the network with the default networking interface
+
+    // using non blocking, async event driven
+    network = NetworkInterface::get_default_instance();
+    if (!network) {
+        printf("Cannot connect to the network, see serial output\n");
+    } 
+
+    network->set_blocking(true);
+    network->connect();
+
     sockServer = new TCPSocket;
     
     sockServer->open(network);
@@ -67,10 +58,10 @@ static void startServer()
         printf("sockServer open error: %i\n", error);
     }
 
-    sockServer->set_blocking(false);
+    sockServer->set_blocking(true);
     int optval = 1;
     sockServer->setsockopt(NSAPI_SOCKET, NSAPI_REUSEADDR,  &optval, sizeof(optval));
-    sockServer->sigio(callback(serverStateChanged));
+    //sockServer->sigio(callback(serverStateChanged));
     
     error = sockServer->bind(port);
     if (error != NSAPI_ERROR_OK) {
@@ -83,8 +74,23 @@ static void startServer()
     }
     
     printf("server started\n");
+
 }
 
+void waitForConnection()
+{
+	nsapi_error_t error = NSAPI_ERROR_OK;
+
+	printf("wait for connection...\n");
+    sockClient = sockServer->accept(&error);
+    if (sockClient && (error == NSAPI_ERROR_OK)) {
+        SocketAddress sockAddrClient;
+        sockClient->getpeername(&sockAddrClient);
+        printf("connected to %s\n", sockAddrClient.get_ip_address());
+    }
+}
+
+#if 0
 static void stopServer()
 {
     if (sockServer) {
@@ -94,14 +100,11 @@ static void stopServer()
         printf("server stopped\n");
     }
 }
-
-
-extern "C" {
+#endif
 
 int gdb_if_init(void)
 {
-	cbStartServer = startServer;
-	cbStopServer = stopServer;
+	startServer();
 
 	printf("Listening on TCP: %4d\n", port);
 
@@ -113,14 +116,26 @@ unsigned char gdb_if_getchar(void)
 	unsigned char ret;
 
 	while (sockClient == nullptr) {
-		ThisThread::sleep_for(10ms);
+		waitForConnection();
 	}
 
 	sockClient->set_blocking(true);
-	if (sockClient->recv(&ret, 1) > 0) {
+	nsapi_size_or_error_t sizeOrError = NSAPI_ERROR_OK;
+	while(sizeOrError == NSAPI_ERROR_OK) { 	//  || sizeOrError == NSAPI_ERROR_NO_CONNECTION) {
+		sizeOrError = sockClient->recv(&ret, 1);
+	}
+
+	if (sizeOrError == 1) {
 		return ret;
 	} else
 	{
+		printf("gdb_if_getchar(): %d\n", sizeOrError);
+		if (sizeOrError < 0) {
+			if (sockClient) {
+				sockClient->close();
+				sockClient = nullptr;
+			}
+		}
 		return '+';
 	}
 }
@@ -130,14 +145,27 @@ unsigned char gdb_if_getchar_to(int timeout)
 	unsigned char ret='+';
 
 	while (sockClient == nullptr) {
-		ThisThread::sleep_for(10ms);
+		waitForConnection();
 	}
 
 	sockClient->set_timeout(timeout);
-	if (sockClient->recv(&ret, 1) > 0) {
+	nsapi_size_or_error_t sizeOrError = NSAPI_ERROR_OK;
+	while(sizeOrError == NSAPI_ERROR_OK) { 		// || sizeOrError == NSAPI_ERROR_NO_CONNECTION) {
+		sizeOrError = sockClient->recv(&ret, 1);
+	}
+
+	if (sizeOrError == 1) {
 		return ret;
 	} else
 	{
+		if (sizeOrError != NSAPI_ERROR_WOULD_BLOCK) {
+			printf("gdb_if_getchar_to(): %d  to:%d\n", sizeOrError, timeout);
+			if (sockClient) {
+				sockClient->close();
+				sockClient = nullptr;
+			}
+			ThisThread::sleep_for(5ms);
+		}
 		return -1;
 	}
 }
@@ -155,12 +183,16 @@ void gdb_if_putchar(unsigned char c, int flush)
 		sockClient->set_blocking(true);
 		sendbuf[bufsize++] = c;
 		if (flush || (bufsize == sizeof(sendbuf))) {
-			sockClient->send(sendbuf, bufsize);
+			nsapi_size_or_error_t sizeOrError = NSAPI_ERROR_OK;
+			sizeOrError = sockClient->send(sendbuf, bufsize);
 			sendbuf[bufsize] = 0;
 			//printf("S %d:'%s'\n", bufsize, (const char*)sendbuf);
 			bufsize = 0;
+
+			if (sizeOrError < 0) {
+				sockClient->close();
+				sockClient = nullptr;
+			}
 		}
 	}
 }
-
-} // extern "C"
