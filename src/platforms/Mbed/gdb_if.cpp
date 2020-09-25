@@ -90,6 +90,14 @@ void waitForConnection()
     }
 }
 
+void closeSocket()
+{
+	if (sockClient) {
+		sockClient->close();
+		sockClient = nullptr;
+	}
+}
+
 #if 0
 static void stopServer()
 {

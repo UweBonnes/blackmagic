@@ -30,6 +30,10 @@ extern "C" {
 void gdb_usb_out_cb(usbd_device *dev, uint8_t ep);
 #endif
 
+#ifdef __MBED__
+void closeSocket();
+#endif
+
 int gdb_if_init(void);
 unsigned char gdb_if_getchar(void);
 unsigned char gdb_if_getchar_to(int timeout);
