@@ -143,7 +143,7 @@ uint32_t firmware_swdp_low_access(ADIv5_DP_t *dp, uint8_t RnW,
 	if((addr == 4) || (addr == 8))
 		request ^= 0x20;
 
-	platform_timeout_set(&timeout, 2000);
+	platform_timeout_set(&timeout, 5000);
 	do {
 		swd_proc.swdptap_seq_out(request, 8);
 		ack = swd_proc.swdptap_seq_in(3);
