@@ -41,13 +41,6 @@ static void swdptap_seq_out_parity(uint32_t MS, int ticks)	__attribute__ ((optim
 DigitalOut 	swdClk(PB_7, 0);
 DigitalInOut swdDIO(PB_8, PIN_OUTPUT, PullNone, 1);
 
-void shortDelay()
-{
-	volatile long count = 5;
-	while(count-- > 0) {}
-}
-
-
 static void swdptap_turnaround(int dir)
 {
 	static int olddir = SWDIO_STATUS_DRIVE;
@@ -61,9 +54,9 @@ static void swdptap_turnaround(int dir)
 	}
 	
 	swdClk = 1;
-	shortDelay();
+	swdClk = 1;
+	swdClk = 1;
 	swdClk = 0;
-	shortDelay();
 
 	if (dir == SWDIO_STATUS_DRIVE) {
 		swdDIO.output();
@@ -77,58 +70,33 @@ static uint32_t swdptap_seq_in(int ticks)
 	int len = ticks;
 
 	swdptap_turnaround(SWDIO_STATUS_FLOAT);
-
 	while (len--) {
 		int val = swdDIO & 1;
 		if (val)
 			ret |= index;
 		index <<= 1;
-
 		swdClk = 1;
-		shortDelay();
 		swdClk = 0;
-		shortDelay();
 	}
-
-//	swdptap_turnaround(SWDIO_STATUS_DRIVE);
 
 	return ret;
 }
 
 static bool swdptap_seq_in_parity(uint32_t *ret, int ticks)
 {
-	uint32_t index = 1;
-	uint32_t res = 0;
-	int len = ticks;
+	*ret = swdptap_seq_in(ticks);
 
-	swdptap_turnaround(SWDIO_STATUS_FLOAT);
-
-	while (len--) {
-		int val = swdDIO & 1;
-		if (val)
-			res |= index;
-		index <<= 1;
-		swdClk = 1;
-		shortDelay();
-		swdClk = 0;
-		shortDelay();
-	}
-	*ret = res;
-
+	int parity = __builtin_popcount(*ret);
 	int parity_bit = swdDIO & 1;
-	swdClk = 1;
-	shortDelay();
-	swdClk = 0;
-	shortDelay();
-
-	int parity = __builtin_popcount(res);
 	if (parity_bit) {
 		parity++;
 	}
+	swdClk = 1;
+	swdClk = 0;
 
-	shortDelay();
-	shortDelay();
-	swdptap_turnaround(SWDIO_STATUS_DRIVE);
+	if (ticks == 32) {
+		swdptap_turnaround(SWDIO_STATUS_DRIVE);
+	}
 
 	return (parity & 1);
 }
@@ -141,9 +109,7 @@ static void swdptap_seq_out(uint32_t MS, int ticks)
 		swdDIO = MS & 1;
 		MS >>= 1;
 		swdClk = 1;
-		shortDelay();
 		swdClk = 0;
-		shortDelay();
 	}
 }
 
@@ -154,9 +120,7 @@ static void swdptap_seq_out_parity(uint32_t MS, int ticks)
 	swdptap_seq_out(MS, ticks);
 	swdDIO = parity & 1;
 	swdClk = 1;
-	shortDelay();
 	swdClk = 0;
-	shortDelay();
 }
 
 swd_proc_t swd_proc;
