@@ -62,7 +62,7 @@ int adiv5_swdp_scan(void)
 	swd_proc.swdptap_seq_out(0xFFFFFFFF, 18);
 	swd_proc.swdptap_seq_out(0xE79E, 16); /* 0b0111100111100111 */
 	swd_proc.swdptap_seq_out(0xFFFFFFFF, 32);
-	swd_proc.swdptap_seq_out(0xFFFFFFFF, 18);
+	swd_proc.swdptap_seq_out(0xFFFFFFFF, 24);
 
 	swd_proc.swdptap_seq_out(0, 16);
 
@@ -143,17 +143,31 @@ uint32_t firmware_swdp_low_access(ADIv5_DP_t *dp, uint8_t RnW,
 	if((addr == 4) || (addr == 8))
 		request ^= 0x20;
 
-	platform_timeout_set(&timeout, 5000);
+	platform_timeout_set(&timeout, 2000);
 	do {
 		swd_proc.swdptap_seq_out(request, 8);
 		ack = swd_proc.swdptap_seq_in(3);
-		if (ack == SWDP_ACK_FAULT) {
+		
+		if ((ack == SWDP_ACK_WAIT) || (ack == SWDP_ACK_FAULT)) {
+			// finish pending operation first
+			if (RnW) {
+				uint32_t dummy_response = 0;
+				swd_proc.swdptap_seq_in_parity(&dummy_response, 32);	// send 31+1+turnaround
+			} else {
+				swd_proc.swdptap_seq_out_parity(0, 32);		// send turnaround+32+1 bit
+				swd_proc.swdptap_seq_out(0, 2);				// send 2 trailing bit
+			}
+
+
 			/* On fault, abort() and repeat the command once.*/
-			firmware_swdp_error(dp);
-			swd_proc.swdptap_seq_out(request, 8);
-			ack = swd_proc.swdptap_seq_in(3);
-		}
-	} while (ack == SWDP_ACK_WAIT && !platform_timeout_is_expired(&timeout));
+			if (ack == SWDP_ACK_FAULT) {
+				printf("*** ACK Fault, retry\n");
+				firmware_swdp_error(dp);
+				swd_proc.swdptap_seq_out(request, 8);
+				ack = swd_proc.swdptap_seq_in(3);
+			}
+		}	
+	} while ((ack == SWDP_ACK_WAIT)  && !platform_timeout_is_expired(&timeout));
 
 	if (ack == SWDP_ACK_WAIT) {
 		printf("*** ACK Timeout ***        RnW:%d  addr:%d  value:%ld\n", RnW, addr, value);
@@ -173,7 +187,7 @@ uint32_t firmware_swdp_low_access(ADIv5_DP_t *dp, uint8_t RnW,
 	if(RnW) {
 		if(swd_proc.swdptap_seq_in_parity(&response, 32))  /* Give up on parity error */
 		{
-			printf("*** Parity Error ***   RnW:%d  addr:%d  value:%ld\n", RnW, addr, value);
+			printf("*** Parity Error ***   RnW:%d  addr:%d  value:%ld  response:%lx\n", RnW, addr, value, response);
 			raise_exception(EXCEPTION_ERROR, "SWDP Parity error");
 		}
 	} else {
