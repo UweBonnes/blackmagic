@@ -86,7 +86,7 @@
 #define ADIV5_AP_BASE		ADIV5_AP_REG(0xF8)
 #define ADIV5_AP_IDR		ADIV5_AP_REG(0xFC)
 
-/* Ignore Bit 7 from the designer bits*/
+/* Known designers seen in SYSROM-PIDR. Ignore Bit 7 from the designer bits*/
 #define AP_DESIGNER_TEXAS 0x17
 #define AP_DESIGNER_ATMEL 0x1f
 #define AP_DESIGNER_STM 0x20
@@ -177,7 +177,6 @@ typedef struct ADIv5_DP_s {
 		uint8_t fault;
 	};
 #endif
-	ADIv5_AP_t *dp_release_ap;
 } ADIv5_DP_t;
 
 struct ADIv5_AP_s {
@@ -189,8 +188,10 @@ struct ADIv5_AP_s {
 	uint32_t idr;
 	uint32_t base;
 	uint32_t csw;
+	uint32_t ap_cortexm_demcr; /* Copy of demcr when starting */
 	uint16_t ap_designer;
 	uint16_t ap_partno;
+	uint32_t ap_spare;
 };
 
 #if PC_HOSTED == 0

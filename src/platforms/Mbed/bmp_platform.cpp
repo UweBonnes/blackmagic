@@ -45,7 +45,7 @@ void platform_init()
 	printf("platform init()\n");
 	
 //	cl_debuglevel = BMP_DEBUG_INFO | BMP_DEBUG_GDB | BMP_DEBUG_TARGET | BMP_DEBUG_PROBE | BMP_DEBUG_WIRE | BMP_DEBUG_STDOUT ;
-	cl_debuglevel = BMP_DEBUG_INFO | BMP_DEBUG_GDB | BMP_DEBUG_STDOUT;
+	cl_debuglevel = BMP_DEBUG_INFO | BMP_DEBUG_STDOUT;
 
 	gdb_if_init();
 }

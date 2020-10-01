@@ -33,8 +33,9 @@
 #include "target.h"
 #include "target_internal.h"
 #include "cortexm.h"
-#include "bmp_platform.h"
+#include "platform.h"
 #include "command.h"
+#include "gdb_packet.h"
 
 #include <unistd.h>
 
@@ -272,6 +273,7 @@ bool cortexm_probe(ADIv5_AP_t *ap)
 		return false;
 	}
 
+	adiv5_ap_ref(ap);
 	t->t_designer = ap->ap_designer;
 	t->idcode     = ap->ap_partno;
 	struct cortexm_priv *priv = calloc(1, sizeof(*priv));
@@ -279,7 +281,6 @@ bool cortexm_probe(ADIv5_AP_t *ap)
 		DEBUG_WARN("calloc: failed in %s\n", __func__);
 		return false;
 	}
-	adiv5_ap_ref(ap);
 
 	t->priv = priv;
 	t->priv_free = cortexm_priv_free;
@@ -349,19 +350,7 @@ bool cortexm_probe(ADIv5_AP_t *ap)
 	t->breakwatch_clear = cortexm_breakwatch_clear;
 
 	target_add_commands(t, cortexm_cmd_list, cortexm_driver_str);
-	if (ap->ap_designer == 0x020) {
-		/* Add STM32 devices that need Debug in Sleep set for
-		 * successfull scanning Romtable, e.g. L0.
-		 */
-		switch (ap->ap_partno) {
-		case 0x457:                   /* STM32L0xx Cat1 */
-		case 0x425:                   /* STM32L0xx Cat2 */
-		case 0x417:                   /* STM32L0xx Cat3 */
-		case 0x447:                   /* STM32L0xx Cat5 */
-			target_mem_write32(t, 0x40015804, -1);
-			break;
-		}
-	}
+
 	/* Probe for FP extension */
 	uint32_t cpacr = target_mem_read32(t, CORTEXM_CPACR);
 	cpacr |= 0x00F00000; /* CP10 = 0b11, CP11 = 0b11 */
@@ -384,49 +373,50 @@ bool cortexm_probe(ADIv5_AP_t *ap)
 	} else {
 		target_check_error(t);
 	}
-/* Temporary printout to get feedback from users.*/
-#if !defined(PC_HOSTED)
-#include "gdb_packet.h"
-        gdb_outf("Probing for Designer %3x Partno %3x\n",
-                 ap->ap_designer, ap->ap_partno);
-#endif
 #define PROBE(x) \
 	do { if ((x)(t)) {target_halt_resume(t, 0); return true;} else target_check_error(t); } while (0)
 
 	switch (ap->ap_designer) {
-        case AP_DESIGNER_STM:
-            PROBE(stm32f1_probe);
-            PROBE(stm32f4_probe);
-            PROBE(stm32h7_probe);
-            PROBE(stm32l0_probe);   /* STM32L0xx & STM32L1xx */
-            PROBE(stm32l4_probe);
-            break;
-        case AP_DESIGNER_ATMEL:
-            PROBE(sam4l_probe);
-            PROBE(samd_probe);
-            PROBE(samx5x_probe);
-            break;
-        case AP_DESIGNER_ARM:
-			if (ap->ap_partno == 0x4c3)
-				PROBE(stm32f1_probe);
-            PROBE(sam3x_probe);
-            break;
-        case AP_DESIGNER_ENERGY_MICRO:
-            PROBE(efm32_probe);
-			break;
-        case AP_DESIGNER_TEXAS:
-            PROBE(msp432_probe);
-			break;
-        default:
-            PROBE(lpc11xx_probe);
-            PROBE(lpc15xx_probe);
-            PROBE(lpc43xx_probe);
-            PROBE(nrf51_probe);
-            PROBE(lmi_probe);
-            PROBE(kinetis_probe);
-            PROBE(ke04_probe);
-            PROBE(lpc17xx_probe);
-        }
+	case AP_DESIGNER_STM:
+		PROBE(stm32f1_probe);
+		PROBE(stm32f4_probe);
+		PROBE(stm32h7_probe);
+		PROBE(stm32l0_probe);
+		PROBE(stm32l4_probe);
+		break;
+	case AP_DESIGNER_ATMEL:
+		PROBE(sam4l_probe);
+		PROBE(samd_probe);
+		PROBE(samx5x_probe);
+		break;
+	case AP_DESIGNER_ARM:
+		if (ap->ap_partno == 0x4c3)  /* Care for STM32F1 clones */
+			PROBE(stm32f1_probe);
+		PROBE(sam3x_probe);
+		break;
+	case AP_DESIGNER_ENERGY_MICRO:
+		PROBE(efm32_probe);
+		break;
+	case AP_DESIGNER_TEXAS:
+		PROBE(msp432_probe);
+		break;
+	default:
+#if PC_HOSTED == 0
+        gdb_outf("Please report Designer %3x and Partno %3x and the probed "
+				 "device\n", ap->ap_designer, ap->ap_partno);
+#else
+		DEBUG_WARN("Please report Designer %3x and Partno %3x and the probed "
+				 "device\n", ap->ap_designer, ap->ap_partno);
+#endif
+		PROBE(lpc11xx_probe);
+		PROBE(lpc15xx_probe);
+		PROBE(lpc43xx_probe);
+		PROBE(nrf51_probe);
+		PROBE(lmi_probe);
+		PROBE(kinetis_probe);
+		PROBE(ke04_probe);
+		PROBE(lpc17xx_probe);
+	}
 #undef PROBE
 	return true;
 }
@@ -436,8 +426,6 @@ bool cortexm_attach(target *t)
 	struct cortexm_priv *priv = t->priv;
 	unsigned i;
 	uint32_t r;
-
-	platform_srst_set_val(connect_assert_srst);
 
 	/* Clear any pending fault condition */
 	target_check_error(t);

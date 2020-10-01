@@ -118,11 +118,8 @@ static void stm32f1_add_flash(target *t,
 
 bool stm32f1_probe(target *t)
 {
-	ADIv5_AP_t *ap = cortexm_ap(t);
-	if (ap->ap_designer == AP_DESIGNER_ARM)
+	if (t->t_designer == AP_DESIGNER_ARM)
 		t->idcode = target_mem_read32(t, DBGMCU_IDCODE) & 0xfff;
-	else
-		t->idcode = ap->ap_partno;
 	size_t flash_size;
 	size_t block_size = 0x400;
 	switch(t->idcode) {

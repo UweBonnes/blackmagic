@@ -340,7 +340,7 @@ void target_detach(target *t)
 	t->detach(t);
 	t->attached = false;
 #if PC_HOSTED == 1
-# include "bmp_platform.h"
+# include "platform.h"
 	platform_buffer_flush();
 #endif
 }
