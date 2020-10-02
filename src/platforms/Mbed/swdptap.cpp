@@ -31,19 +31,21 @@ enum {
 };
 
 extern "C" {
-// static void swdptap_turnaround(int dir) __attribute__ ((optimize(1)));
-// static uint32_t swdptap_seq_in(int ticks) __attribute__ ((optimize(1)));
-// static bool swdptap_seq_in_parity(uint32_t *ret, int ticks)	__attribute__ ((optimize(1)));
-// static void swdptap_seq_out(uint32_t MS, int ticks)	__attribute__ ((optimize(1)));
-// static void swdptap_seq_out_parity(uint32_t MS, int ticks)	__attribute__ ((optimize(1)));
+static void swdptap_turnaround(int dir) __attribute__ ((optimize(3)));
+static uint32_t swdptap_seq_in(int ticks) __attribute__ ((optimize(3)));
+static bool swdptap_seq_in_parity(uint32_t *ret, int ticks)	__attribute__ ((optimize(3)));
+static void swdptap_seq_out(uint32_t MS, int ticks)	__attribute__ ((optimize(3)));
+static void swdptap_seq_out_parity(uint32_t MS, int ticks)	__attribute__ ((optimize(3)));
 
-static void swdptap_turnaround(int dir);
-static uint32_t swdptap_seq_in(int ticks);
-static bool swdptap_seq_in_parity(uint32_t *ret, int ticks);
-static void swdptap_seq_out(uint32_t MS, int ticks);
-static void swdptap_seq_out_parity(uint32_t MS, int ticks);
+// static void swdptap_turnaround(int dir);
+// static uint32_t swdptap_seq_in(int ticks);
+// static bool swdptap_seq_in_parity(uint32_t *ret, int ticks);
+// static void swdptap_seq_out(uint32_t MS, int ticks);
+// static void swdptap_seq_out_parity(uint32_t MS, int ticks);
 }
 
+// changing GPIO speed tested only with STM32F407
+#ifdef TARGET_STM32F4
 #define GPIO_OSPEED_2MHZ		0x0
 #define GPIO_OSPEED_25MHZ		0x1
 #define GPIO_OSPEED_50MHZ		0x2
@@ -84,12 +86,19 @@ public:
 FastDigitalOut 	swdClk(PB_7, 0);
 FastDigitalInOut swdDIO(PB_8, PIN_OUTPUT, PullNone, 1);
 
+#else	// #ifdef TARGET_STM32F4
+
+DigitalOut 	swdClk(PB_7, 0);
+DigitalInOut swdDIO(PB_8, PIN_OUTPUT, PullNone, 1);
+
+#endif	// #ifdef TARGET_STM32F4
+
 constexpr uint16_t DELAY_CYCLES = 1;
 void clockDelay(uint16_t n) 
 {
-	while(--n) {
-		__NOP();
-	};
+	// while(--n) {
+	// 	__NOP();
+	// };
 }
 
 static void swdptap_turnaround(int dir)
