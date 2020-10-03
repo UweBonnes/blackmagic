@@ -117,9 +117,8 @@ int gdb_getpacket(char *packet, int size)
 	}
 	gdb_if_putchar('+', 1); /* send ack */
 	packet[i] = 0;
-	//printf("R %d:'%s'\n", i, packet);
 
-#if (PC_HOSTED == 1)
+#if (PC_HOSTED == 1) || defined(__MBED__)
 	DEBUG_GDB_WIRE("%s : ", __func__);
 	for(int j = 0; j < i; j++) {
 		c = packet[j];
@@ -148,7 +147,7 @@ void gdb_putpacket(const char *packet, int size)
 		gdb_if_putchar('$', 0);
 		for(i = 0; i < size; i++) {
 			c = packet[i];
-#if PC_HOSTED == 1
+#if (PC_HOSTED == 1)  || defined(__MBED__)
 			if ((c >= 32) && (c < 127)) {
 				DEBUG_GDB_WIRE("%c", c);
 			} else {

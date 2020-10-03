@@ -33,7 +33,7 @@ typedef struct swd_proc_s {
 } swd_proc_t;
 extern swd_proc_t swd_proc;
 
-# if PC_HOSTED == 1 && !defined(__MBED__)
+# if PC_HOSTED == 1
 int platform_swdptap_init(void);
 # else
 int swdptap_init(void);
