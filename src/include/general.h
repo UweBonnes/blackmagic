@@ -34,7 +34,7 @@
 #include <inttypes.h>
 #include <sys/types.h>
 
-#include "bmp_platform.h"
+#include "platform.h"
 #include "platform_support.h"
 
 enum BMP_DEBUG {

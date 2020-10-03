@@ -22,18 +22,16 @@
  * implementation.
  */
 #include "mbed.h"
-#include "bmp_platform.h"
+#include "blackmagic/src/platforms/Mbed/platform.h"
 #include "gdb_if.h"
 
-AnalogIn	ainVTarget(PC_0);
 int cl_debuglevel;
-
+AnalogIn	ainTargetVoltage(PA_6);
+static char sVoltage[16];
 
 extern "C" {
 // uint16_t led_idle_run;
 // uint16_t srst_pin;
-
-//static void adc_init(void);
 
 int platform_hwversion(void)
 {
@@ -61,7 +59,18 @@ bool platform_srst_get_val()
 
 const char *platform_target_voltage(void)
 {
-	return 0;
+	float sum = 0.0f;
+	int nAverage = 16;
+	float refVoltage = 3.3f;		// TODO: check reference voltage
+
+	for (int i = 0; i < nAverage; i++) {
+		sum += ainTargetVoltage;
+	}
+	float relVoltage = sum / nAverage;
+	float absVoltage = relVoltage * refVoltage;	
+	snprintf(sVoltage, sizeof(sVoltage), "%6.2f V", absVoltage);
+
+	return sVoltage;
 }
 
 } // extern "C"
