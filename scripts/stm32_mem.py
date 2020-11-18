@@ -102,8 +102,12 @@ def stm32_scan(args, test):
 			# continue
 			continue
 
-		man = dfudev.handle.getString(dfudev.dev.iManufacturer, 30)
-		if man == b"Black Sphere Technologies":
+		interface = dfudev.handle.getString(dfudev.iface.iInterface, 128).decode('utf-8')
+		man = dfudev.handle.getString(dfudev.dev.iManufacturer, 64).decode('utf-8')
+		serial_no = dfudev.handle.getString(dfudev.dev.iSerialNumber, 30).decode('utf-8')
+		if args.serial_target and serial_no !=	args.serial_target:
+			continue
+		if "@Internal Flash" in interface or man == "Black Sphere Technologies":
 			bmp = bmp + 1
 			bmp_devs.append(dev)
 
@@ -121,13 +125,15 @@ def stm32_scan(args, test):
 		print("Found multiple devices:\n")
 		for dev in bmp_devs:
 			dfudev = dfu.dfu_device(*dev)
-			man = dfudev.handle.getString(dfudev.dev.iManufacturer, 30).decode('utf8')
-			product = dfudev.handle.getString(dfudev.dev.iProduct, 96).decode('utf8')
-			serial_no = dfudev.handle.getString(dfudev.dev.iSerialNumber, 30).decode('utf8')
+			man = dfudev.handle.getString(dfudev.dev.iManufacturer, 30).decode('utf-8')
+			product = dfudev.handle.getString(dfudev.dev.iProduct, 96).decode('utf-8')
+			interface = dfudev.handle.getString(4, 128).decode('utf-8')
+			serial_no = dfudev.handle.getString(dfudev.dev.iSerialNumber, 30).decode('utf-8')
 			print("Device ID:\t %04x:%04x" % (dfudev.dev.idVendor, dfudev.dev.idProduct))
 			print("Manufacturer:\t %s" % man)
 			print("Product:\t %s" % product)
-			print("Serial:\t\t %s\n" % serial_no)
+			print("Serial:\t\t %s" % serial_no)
+			print("Interface:\t %s\n" % interface)
 
 		print("Select device with serial number!")
 		exit (-1)
@@ -196,22 +202,21 @@ if __name__ == "__main__":
 		print("Invoking Application Device")
 		exit(0)
 	dfudev.make_idle()
-	file = open(args.progfile, "rb")
-	if (os.path.getsize(args.progfile) > 0x1f800):
-		print("File too large")
-		exit(0)
 
-	bin = file.read()
 
-	product = dfudev.handle.getString(dfudev.dev.iProduct, 64).decode('utf8')
+	product = dfudev.handle.getString(dfudev.dev.iProduct, 64).decode('utf-8')
+	interface = dfudev.handle.getString(dfudev.iface.iInterface, 128).decode('utf-8')
+	print(interface)
 	if args.address :
 		start = int(args.address, 0)
 	else :
-		if "F4" in product or "STLINK-V3" in product:
-			start = 0x8004000
-		else:
-			start = 0x8002000
+		start = int(interface.split("/")[1], 16)
 	addr = start
+	file = open(args.progfile, "rb")
+	if (os.path.getsize(args.progfile) > 0x1ffff): # max 2 MByte
+		print("File too large")
+		exit(0)
+	bin = file.read()
 	while bin:
 		print ("Programming memory at 0x%08X" % addr, end="\r")
 		stdout.flush()
