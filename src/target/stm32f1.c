@@ -77,6 +77,7 @@ static int stm32f1_flash_write(struct target_flash *f,
 #define FLASH_CR_PER	(1 << 1)
 #define FLASH_CR_PG		(1 << 0)
 
+
 #define FLASH_OBR_RDPRT (1 << 1)
 
 #define FLASH_SR_BSY	(1 << 0)
@@ -122,28 +123,26 @@ static void stm32f1_add_flash(target *t,
 bool gd32f1_probe(target *t)
 {
 	uint16_t stored_idcode = t->idcode;
-	if ((t->cpuid & CPUID_PARTNO_MASK) == CORTEX_M0)
-		t->idcode = target_mem_read32(t, DBGMCU_IDCODE_F0) & 0xfff;
-	else
-		t->idcode = target_mem_read32(t, DBGMCU_IDCODE) & 0xfff;
+    // M3 & M4 & riscV only afaik
+    t->idcode = target_mem_read32(t, DBGMCU_IDCODE) & 0xfff;
+    uint32_t signature= target_mem_read32(t, FLASHSIZE);
+    uint32_t flashSize=signature & 0xFFFF;
+    uint32_t ramSize=signature >>16 ;
 	switch(t->idcode) {
 	case 0x414:  /* Gigadevice gd32f303 */
-		target_add_ram(t, 0x20000000, 48*1024);
-		stm32f1_add_flash(t, 0x8000000, 256*1024, 0x400);
-		target_add_commands(t, stm32f1_cmd_list, "G32F303");
-		t->driver = "GD32F3 256 k";
-		return true;
+		t->driver = "GD32F3";
+        break;
 	case 0x410:  /* Gigadevice gd32f103 */
- 		target_add_ram(t, 0x20000000, 20*1024);
-		stm32f1_add_flash(t, 0x8000000, 64*1024, 0x400);
-		target_add_commands(t, stm32f1_cmd_list, "GD32F103 ");
- 		t->driver = "GD32F1 64k ";
-		return true;
+ 		t->driver = "GD32F1";
+        break;
 	default:
   		t->idcode = stored_idcode;
 		return false;
 	}
-    return false;
+    target_add_ram(t, 0x20000000, ramSize*1024);
+    stm32f1_add_flash(t, 0x8000000, flashSize*1024, 0x400);
+    target_add_commands(t, stm32f1_cmd_list, t->driver);
+    return true;
 }
 /**
     \brief identify the stm32f1 chip
