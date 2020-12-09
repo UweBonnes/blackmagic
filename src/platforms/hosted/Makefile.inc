@@ -38,17 +38,13 @@ LDFLAGS += -lusb-1.0
 CFLAGS += $(shell pkg-config --cflags libftdi1)
 LDFLAGS += $(shell pkg-config --libs libftdi1)
 CFLAGS += -Wno-missing-field-initializers
-endif
-
-ifneq ($(HOSTED_BMP_ONLY), 1)
+SRC += cmsis_dap.c dap.c
+CFLAGS  +=  -DCMSIS_DAP
  ifneq (, $(findstring mingw, $(SYS)))
-  SRC += cmsis_dap.c dap.c hid.c
-  CFLAGS  +=  -DCMSIS_DAP
+  SRC += hid.c
  else
   CFLAGS += $(shell pkg-config --cflags hidapi-libusb)
   LDFLAGS += $(shell pkg-config --libs hidapi-libusb)
-  CFLAGS  +=  -DCMSIS_DAP
-  SRC += cmsis_dap.c dap.c
  endif
 endif
 

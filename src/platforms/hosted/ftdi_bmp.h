@@ -109,16 +109,20 @@ extern data_desc_t active_state;
 #if defined(HOSTED_BMP_ONLY)
 # pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wunused-parameter"
-int ftdi_bmp_init(BMP_CL_OPTIONS_t *cl_opts, bmp_info_t *info) {return -1;};
-int libftdi_swdptap_init(swd_proc_t *swd_proc) {return -1;};
-int libftdi_jtagtap_init(jtag_proc_t *jtag_proc) {return 0;};
-void libftdi_buffer_flush(void) {};
-int libftdi_buffer_write(const uint8_t *data, int size) {return size;};
-int libftdi_buffer_read(uint8_t *data, int size) {return size;};
-const char *libftdi_target_voltage(void) {return "ERROR";};
-void libftdi_jtagtap_tdi_tdo_seq(
-	uint8_t *DO, const uint8_t final_tms, const uint8_t *DI, int ticks) {};
-bool  libftdi_swd_possible(bool *do_mpsse, bool *direct_bb_swd) {return false;};
+# pragma GCC diagnostic ignored "-Wunused-function"
+/* Define the stub functions as 'static' so that this header
+ * can be included from multiple files without causing
+ * linkage errors when 'HOSTED_BMP_ONLY' is defined.  */
+static int ftdi_bmp_init(BMP_CL_OPTIONS_t *cl_opts, bmp_info_t *info) {return -1;}
+static int libftdi_swdptap_init(swd_proc_t *swd_proc) {return -1;}
+static int libftdi_jtagtap_init(jtag_proc_t *jtag_proc) {return 0;}
+static void libftdi_buffer_flush(void) {}
+static int libftdi_buffer_write(const uint8_t *data, int size) {return size;}
+static int libftdi_buffer_read(uint8_t *data, int size) {return size;}
+static const char *libftdi_target_voltage(void) {return "ERROR";}
+static void libftdi_jtagtap_tdi_tdo_seq(
+	uint8_t *DO, const uint8_t final_tms, const uint8_t *DI, int ticks) {}
+static bool  libftdi_swd_possible(bool *do_mpsse, bool *direct_bb_swd) {return false;}
 # pragma GCC diagnostic pop
 #else
 int ftdi_bmp_init(BMP_CL_OPTIONS_t *cl_opts, bmp_info_t *info);

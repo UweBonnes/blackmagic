@@ -47,12 +47,16 @@
 #if defined(HOSTED_BMP_ONLY)
 # pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wunused-parameter"
-int jlink_init(bmp_info_t *info) {return -1;};
-int jlink_swdp_scan(bmp_info_t *info) {return 0;};
-int jlink_jtagtap_init(bmp_info_t *info, jtag_proc_t *jtag_proc) {return 0;};
-const char *jlink_target_voltage(bmp_info_t *info) {return "ERROR";};
-void jlink_srst_set_val(bmp_info_t *info, bool assert) {};
-bool jlink_srst_get_val(bmp_info_t *info) {return true;};
+# pragma GCC diagnostic ignored "-Wunused-function"
+/* Define the stub functions as 'static' so that this header
+ * can be included from multiple files without causing
+ * linkage errors when 'HOSTED_BMP_ONLY' is defined.  */
+static int jlink_init(bmp_info_t *info) {return -1;}
+static int jlink_swdp_scan(bmp_info_t *info) {return 0;}
+static int jlink_jtagtap_init(bmp_info_t *info, jtag_proc_t *jtag_proc) {return 0;}
+static const char *jlink_target_voltage(bmp_info_t *info) {return "ERROR";}
+static void jlink_srst_set_val(bmp_info_t *info, bool assert) {}
+static bool jlink_srst_get_val(bmp_info_t *info) {return true;}
 # pragma GCC diagnostic pop
 #else
 int jlink_init(bmp_info_t *info);
