@@ -46,7 +46,7 @@ jtag_proc_t jtag_proc;
 
 void gdb_ident(char *p, int count)
 {
-	snprintf(p, count, "for %s (%s), %s", info.manufacturer, info.product,
+	snprintf(p, count, "%s (%s), %s", info.manufacturer, info.product,
 			 info.version);
 }
 
