@@ -44,13 +44,13 @@
 #define SELECT_IF_JTAG            0
 #define SELECT_IF_SWD             1
 
-#if defined(HOSTED_BMP_ONLY)
+#if HOSTED_BMP_ONLY != 0
 # pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wunused-parameter"
 # pragma GCC diagnostic ignored "-Wunused-function"
 /* Define the stub functions as 'static' so that this header
  * can be included from multiple files without causing
- * linkage errors when 'HOSTED_BMP_ONLY' is defined.  */
+ * linkage errors when 'HOSTED_BMP_ONLY != 0'.  */
 static int jlink_init(bmp_info_t *info) {return -1;}
 static int jlink_swdp_scan(bmp_info_t *info) {return 0;}
 static int jlink_jtagtap_init(bmp_info_t *info, jtag_proc_t *jtag_proc) {return 0;}

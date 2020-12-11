@@ -3,7 +3,7 @@
 
 #include "cl_utils.h"
 
-#if !defined(HOSTED_BMP_ONLY)
+#if HOSTED_BMP_ONLY == 0
 # include <libusb-1.0/libusb.h>
 struct trans_ctx {
 #define TRANS_FLAGS_IS_DONE (1 << 0)
@@ -31,7 +31,7 @@ typedef struct bmp_info_s {
 	char manufacturer[128];
 	char product[128];
 	char version[128];
-#if !defined(HOSTED_BMP_ONLY)
+#if HOSTED_BMP_ONLY == 0
 	libusb_context *libusb_ctx;
 	struct ftdi_context *ftdic;
 	usb_link_t *usb_link;

@@ -27,7 +27,9 @@
 #include "jtagtap.h"
 
 #include "bmp_hosted.h"
+#if HOSTED_BMP_ONLY == 0
 #include <libftdi1/ftdi.h>
+#endif
 
 typedef struct data_desc_s {
 	int16_t data_low;
@@ -106,13 +108,13 @@ extern cable_desc_t *active_cable;
 extern struct ftdi_context *ftdic;
 extern data_desc_t active_state;
 
-#if defined(HOSTED_BMP_ONLY)
+#if HOSTED_BMP_ONLY != 0
 # pragma GCC diagnostic push
 # pragma GCC diagnostic ignored "-Wunused-parameter"
 # pragma GCC diagnostic ignored "-Wunused-function"
 /* Define the stub functions as 'static' so that this header
  * can be included from multiple files without causing
- * linkage errors when 'HOSTED_BMP_ONLY' is defined.  */
+ * linkage errors when 'HOSTED_BMP_ONLY != 0'.  */
 static int ftdi_bmp_init(BMP_CL_OPTIONS_t *cl_opts, bmp_info_t *info) {return -1;}
 static int libftdi_swdptap_init(swd_proc_t *swd_proc) {return -1;}
 static int libftdi_jtagtap_init(jtag_proc_t *jtag_proc) {return 0;}

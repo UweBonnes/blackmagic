@@ -8,7 +8,9 @@ CFLAGS +=-I ./target -I./platforms/pc
 # be useful to minimize external dependencies, and make building on
 # windows systems easier.
 ifeq ($(HOSTED_BMP_ONLY), 1)
- CFLAGS  +=  -DHOSTED_BMP_ONLY
+ CFLAGS  +=  -DHOSTED_BMP_ONLY=1
+else
+ CFLAGS  +=  -DHOSTED_BMP_ONLY=0
 endif
 
 ifneq (, $(findstring linux, $(SYS)))
@@ -18,10 +20,16 @@ CFLAGS += -fsanitize=address
 LDFLAGS += -lasan
 endif
 else ifneq (, $(findstring mingw, $(SYS)))
+# Build for windows versions Vista, and above, where the
+# 'SetupDiGetDevicePropertyW()' function is available
+CFLAGS += -D_WIN32_WINNT=0x600
 SRC += 	 serial_win.c
 LDFLAGS += -lws2_32
 LDFLAGS += -lsetupapi
 else ifneq (, $(findstring cygwin, $(SYS)))
+# Build for windows versions Vista, and above, where the
+# 'SetupDiGetDevicePropertyW()' function is available
+CFLAGS += -D_WIN32_WINNT=0x600
 SRC += 	 serial_win.c
 LDFLAGS += -lws2_32
 LDFLAGS += -lsetupapi
