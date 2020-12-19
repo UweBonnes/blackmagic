@@ -4,7 +4,7 @@ OBJCOPY = $(CROSS_COMPILE)objcopy
 
 OPT_FLAGS = -Os
 CFLAGS += -mcpu=cortex-m3 -mthumb \
-	-DSTM32F1 -DDISCOVERY_SWLINK -I../libopencm3/include \
+	-DSTM32F1  -DDFU_SERIAL_LENGTH=9 -I../libopencm3/include \
 	-I platforms/stm32
 LDFLAGS_BOOT := $(LDFLAGS) --specs=nano.specs -lopencm3_stm32f1 \
 	-Wl,-T,platforms/stm32/stlink.ld -nostartfiles -lc\
@@ -31,7 +31,7 @@ SRC += 	cdcacm.c	\
 
 all:	blackmagic.bin blackmagic_dfu.bin blackmagic_dfu.hex
 
-blackmagic_dfu.elf: usbdfu.o dfucore.o dfu_f1.o platform_common.o
+blackmagic_dfu.elf: usbdfu.o dfucore.o dfu_f1.o platform_common.o serialno.o
 	@echo "  LD      $@"
 	$(Q)$(CC) $^ -o $@ $(LDFLAGS_BOOT)
 
