@@ -248,6 +248,8 @@ int target_flash_erase(target *t, target_addr addr, size_t len)
 			DEBUG_WARN("Erase stopped at 0x%06" PRIx32 "\n", addr);
 			return ret;
 		}
+		if (!f->erase)
+			return ret;
 		size_t tmptarget = MIN(addr + len, f->start + f->length);
 		size_t tmplen = tmptarget - addr;
 		ret |= f->erase(f, addr, tmplen);

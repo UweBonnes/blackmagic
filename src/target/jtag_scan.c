@@ -28,6 +28,7 @@
 #include "jtagtap.h"
 #include "target.h"
 #include "adiv5.h"
+#include "avr8.h"
 
 jtag_dev_t jtag_devs[JTAG_MAX_DEVS+1];
 int jtag_dev_count;
@@ -143,6 +144,7 @@ int jtag_scan(const uint8_t *irlens)
 			if ((product >= 0x940) & (product < 0x990)) {
 				jtag_devs[i].jd_descr = "ATMEL AVR8";
 				expected_irlen = 4;
+				jd_handlers[i] = avr8_handler;
 				break;
 			}
 			jtag_devs[i].jd_descr = "ATMEL";
