@@ -124,7 +124,10 @@ struct target_s {
 
 	/* Other stuff */
 	const char *driver;
-	uint32_t cpuid;
+	union {
+		uint32_t cpuid;      /* Only used in ARM Context */
+		uint32_t jtag_index; /* Only use in AVR8 context */
+	};
 	char *core;
 	char cmdline[MAX_CMDLINE];
 	target_addr heapinfo[4];

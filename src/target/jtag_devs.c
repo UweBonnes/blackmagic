@@ -21,6 +21,7 @@
 #include "general.h"
 #include "jtag_scan.h"
 #include "adiv5.h"
+#include "avr8.h"
 #include "jtag_devs.h"
 
 jtag_dev_descr_t dev_descr[] = {
@@ -52,6 +53,9 @@ jtag_dev_descr_t dev_descr[] = {
 	{.idcode = 0x4BA00477 , .idmask = 0xFFFFFFFF,
 		.descr = "NXP: LPC17xx family."},
 /* Just for fun, unsupported */
+	{.idcode = 0x0900003F, .idmask = 0xFF000FFF,
+	 .descr = "ATMEL: AVR8.",
+	 .handler = avr8_handler},
 	{.idcode = 0x8940303F, .idmask = 0xFFFFFFFF, .descr = "ATMEL: ATMega16."},
 	{.idcode = 0x0792603F, .idmask = 0xFFFFFFFF, .descr = "ATMEL: AT91SAM9261."},
 	{.idcode = 0x20270013, .idmask = 0xFFFFFFFF, .descr = "Intel: i80386ex."},
