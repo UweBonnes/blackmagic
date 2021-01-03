@@ -29,6 +29,7 @@
 #include "target.h"
 #include "adiv5.h"
 #include "avr8.h"
+#include "xilinx.h"
 
 struct jtag_dev_s jtag_devs[JTAG_MAX_DEVS+1];
 int jtag_dev_count;
@@ -151,14 +152,20 @@ int jtag_scan(const uint8_t *irlens)
 			jtag_devs[i].jd_descr = "ATMEL";
 			break;
 		case DESIGNER_XILINX:
+# if PC_HOSTED == 0
 			if (!irlens) {
-				/* Guessed irlen fir XILINX devices is wrong.
+				/* Guessed irlen for XILINX devices is wrong.
 				 * IR data contains status bits!
 				 */
 				DEBUG_WARN("Please provide irlens as chain contains XILINX devices!\n");
 				return 0;
 			}
 			jtag_devs[i].jd_descr = "XILINX";
+#else
+			expected_irlen = xilinx(product, &jd_handlers[i], &jtag_devs[i]);
+			if (!expected_irlen)
+				jtag_devs[i].jd_descr = "XILINX";
+#endif
 			break;
 		case DESIGNER_XAMBALA:
 			expected_irlen = 5;
@@ -227,19 +234,20 @@ int jtag_scan(const uint8_t *irlens)
 	return jtag_dev_count;
 }
 
-void jtag_dev_write_ir(jtag_proc_t *jp, uint8_t jd_index, uint32_t ir)
+uint32_t jtag_dev_write_ir(jtag_proc_t *jp, uint8_t jd_index, uint32_t ir)
 {
+	uint8_t dout[4] = {0, 0, 0, 0};
 	jtag_dev_t *d = &jtag_devs[jd_index];
-	if(ir == d->current_ir) return;
 	for(int i = 0; i < jtag_dev_count; i++)
 		jtag_devs[i].current_ir = -1;
 	d->current_ir = ir;
 
 	jtagtap_shift_ir();
 	jp->jtagtap_tdi_seq(0, ones, d->ir_prescan);
-	jp->jtagtap_tdi_seq(d->ir_postscan?0:1, (void*)&ir, d->ir_len);
+	jp->jtagtap_tdi_tdo_seq(dout, d->ir_postscan ? 0 : 1, (void*)&ir, d->ir_len);
 	jp->jtagtap_tdi_seq(1, ones, d->ir_postscan);
 	jtagtap_return_idle();
+	return (dout[0] | (dout[1] << 8) | (dout[2] << 16) | (dout[3] << 24));
 }
 
 void jtag_dev_shift_dr(jtag_proc_t *jp, uint8_t jd_index, uint8_t *dout, const uint8_t *din, int ticks)
