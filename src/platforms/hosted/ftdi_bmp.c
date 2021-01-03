@@ -523,7 +523,8 @@ int libftdi_buffer_read(uint8_t *data, int size)
 {
 #if defined(USE_USB_VERSION_BIT)
 	struct ftdi_transfer_control *tc;
-	outbuf[bufptr++] = SEND_IMMEDIATE;
+	uint8_t send_immediate = SEND_IMMEDIATE;
+	libftdi_buffer_write(&send_immediate, 1);
 	libftdi_buffer_flush();
 	tc = ftdi_read_data_submit(ftdic, data, size);
 	ftdi_transfer_data_done(tc);
@@ -547,13 +548,13 @@ int libftdi_buffer_read(uint8_t *data, int size)
 void libftdi_jtagtap_tdi_tdo_seq(
 	uint8_t *DO, const uint8_t final_tms, const uint8_t *DI, int ticks)
 {
+	if(!ticks) return;
+	DEBUG_PROBE("jtagtap_tdi_tdo_seq %s %s  %3x ticks %d\n", (DO)? "DO":"  ",
+				(final_tms)? "final":"     ", (DI)? DI[0] : 0xfff, ticks);
 	int rsize, rticks;
 
-	if(!ticks) return;
 	if (!DI && !DO) return;
 
-    DEBUG_WIRE("libftdi_jtagtap_tdi_tdo_seq %s ticks: %d\n",
-			   (DI && DO) ? "read/write" : ((DI) ? "read" : "write"),ticks);
 	if(final_tms) ticks--;
 	rticks = ticks & 7;
 	ticks >>= 3;
@@ -583,7 +584,7 @@ void libftdi_jtagtap_tdi_tdo_seq(
 			MPSSE_LSB | MPSSE_BITMODE | MPSSE_WRITE_NEG;
 		data[index++] = 0;
 		if (DI)
-			data[index++] = (DI[ticks]) >> rticks?0x81 : 0x01;
+			data[index++] = ((DI[ticks]) >> rticks) ? 0x81 : 0x01;
 	}
 	if (index)
 		libftdi_buffer_write(data, index);

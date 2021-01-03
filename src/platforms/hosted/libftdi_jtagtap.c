@@ -81,11 +81,9 @@ int libftdi_jtagtap_init(jtag_proc_t *jtag_proc)
 			DEBUG_WARN(" %02x", cmd_write[i]);
 		DEBUG_WARN("\n");
 	}
-	/* Go to JTAG mode for SWJ-DP */
-	for (int i = 0; i <= 50; i++)
-		jtag_proc->jtagtap_next(1, 0);          /* Reset SW-DP */
-	jtag_proc->jtagtap_tms_seq(0xE73C, 16);		/* SWD to JTAG sequence */
-	jtag_proc->jtagtap_tms_seq(0x1F, 6);
+	jtag_proc->jtagtap_tms_seq(0xffffffff, 32);	/* Reset SW-DP by sending*/
+	jtag_proc->jtagtap_tms_seq(0xffffffff, 18); /* 50 cycles hihh*/
+	jtag_proc->jtagtap_tms_seq(0xffffE73C, 32);	/* SWD to JTAG sequence */
 
 	return 0;
 }
@@ -97,14 +95,21 @@ static void jtagtap_reset(void)
 
 static void jtagtap_tms_seq(uint32_t MS, int ticks)
 {
+	DEBUG_PROBE("jtagtap_tms_seq TMS %8x, ticks %d\n", MS, ticks);
 	uint8_t tmp[3] = {
 		MPSSE_WRITE_TMS | MPSSE_LSB | MPSSE_BITMODE | MPSSE_WRITE_NEG, 0, 0};
-	while(ticks >= 0) {
-		tmp[1] = ticks<7?ticks-1:6;
-		tmp[2] = 0x80 | (MS & 0x7F);
+	int current_ticks;
+	while(ticks > 0) {
+		/* Attention: Bug in FT2232L(D?, H not!).
+		 *  With 7 bits TMS shift, static TDO
+		 *  value gets set to TMS on last TCK edge*/
+		current_ticks = (ticks < 7) ? ticks : 6;
+		tmp[1] = current_ticks - 1;
+		tmp[2] = 0x80 | MS ; /* KEEP TDO high */
 
 		libftdi_buffer_write(tmp, 3);
-		MS >>= 7; ticks -= 7;
+		MS >>= current_ticks;
+		ticks -= current_ticks;
 	}
 }
 
@@ -116,6 +121,7 @@ static void jtagtap_tdi_seq(
 
 static uint8_t jtagtap_next(uint8_t dTMS, uint8_t dTDI)
 {
+	DEBUG_PROBE("jtagtap_next TMS %s, TDI %s\n", (dTMS)? "1" : "", (dTDI)? "1" : "");
 	uint8_t ret;
 	uint8_t tmp[3] = {MPSSE_WRITE_TMS | MPSSE_DO_READ | MPSSE_LSB |
 					  MPSSE_BITMODE | MPSSE_WRITE_NEG, 0, 0};
