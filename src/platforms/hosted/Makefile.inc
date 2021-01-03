@@ -64,6 +64,8 @@ endif
 VPATH += platforms/pc
 SRC += timing.c cl_utils.c utils.c jtag_devs.c
 SRC += bmp_remote.c remote_swdptap.c remote_jtagtap.c
+VPATH += target/xilinx
+SRC += xilinx.c xc2c.c
 ifneq ($(HOSTED_BMP_ONLY), 1)
 SRC += bmp_libusb.c stlinkv2.c
 SRC += ftdi_bmp.c libftdi_swdptap.c libftdi_jtagtap.c

@@ -29,6 +29,7 @@
 #include "target.h"
 #include "adiv5.h"
 #include "avr8.h"
+#include "xilinx.h"
 
 jtag_dev_t jtag_devs[JTAG_MAX_DEVS+1];
 int jtag_dev_count;
@@ -150,6 +151,7 @@ int jtag_scan(const uint8_t *irlens)
 			jtag_devs[i].jd_descr = "ATMEL";
 			break;
 		case DESIGNER_XILINX:
+# if PC_HOSTED == 0
 			if (!irlens) {
 				/* Guessed irlen for XILINX devices is wrong.
 				 * IR data contains status bits!
@@ -158,6 +160,11 @@ int jtag_scan(const uint8_t *irlens)
 				return 0;
 			}
 			jtag_devs[i].jd_descr = "XILINX";
+#else
+			expected_irlen = xilinx(product, &jd_handlers[i], &jtag_devs[i]);
+			if (!expected_irlen)
+				jtag_devs[i].jd_descr = "XILINX";
+#endif
 			break;
 		case DESIGNER_XAMBALA:
 			expected_irlen = 5;
@@ -238,7 +245,7 @@ uint32_t fw_jtag_dev_shift_ir(jtag_proc_t *jp, uint8_t jd_index, uint32_t ir)
 
 	jtagtap_shift_ir();
 	jp->jtagtap_tdi_seq(0, ones, d->ir_prescan);
-	jp->jtagtap_tdi_tdo_seq(dout, d->ir_postscan?0:1, (void*)&ir, d->ir_len);
+	jp->jtagtap_tdi_tdo_seq(dout, d->ir_postscan ? 0 : 1, (void*)&ir, d->ir_len);
 	jp->jtagtap_tdi_seq(1, ones, d->ir_postscan);
 	jtagtap_return_idle();
 	return (dout[0] | (dout[1] << 8) | (dout[2] << 16) | (dout[3] << 24));
