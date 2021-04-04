@@ -736,6 +736,47 @@ void adiv5_dp_init(ADIv5_DP_t *dp)
 		}
 	}
 
+	if ((dp->idcode & ADIV5_DP_VERSION_MASK) == ADIV5_DPv2) {
+		/* Read TargetID. Can be done with device in WFI, sleep or reset!*/
+		adiv5_dp_write(dp, ADIV5_DP_SELECT, ADIV5_DP_BANK2);
+		dp->targetid = adiv5_dp_read(dp, ADIV5_DP_CTRLSTAT);
+		adiv5_dp_write(dp, ADIV5_DP_SELECT, ADIV5_DP_BANK0);
+		DEBUG_INFO("TARGETID %08" PRIx32 "\n", dp->targetid);
+		if (((dp->targetid >> 1) & 0x7ff) == AP_DESIGNER_NXP) {
+			/* UM11126, 51.6.1
+			 * Debug session with uninitialized/invalid flash image or ISP mode
+			 */
+			ADIv5_AP_t tmpap;
+			memset(&tmpap, 0, sizeof(tmpap));
+			tmpap.dp = dp;
+			tmpap.apsel = 0;
+			tmpap.idr = adiv5_ap_read(&tmpap, ADIV5_AP_IDR);
+			/* All fine when AP0 is visible*/
+			if (!tmpap.idr){
+				/* AP0 not visible, activation sequence needed*/
+				tmpap.apsel = 2;
+				tmpap.idr = adiv5_ap_read(&tmpap, ADIV5_AP_IDR);
+				DEBUG_WARN("AP2 %08" PRIx32 "\n", tmpap.idr);
+				adiv5_ap_write(&tmpap, ADIV5_AP_CSW, 0x21);
+				uint32_t value;
+				platform_delay(20);
+				do {
+					value = adiv5_ap_read(&tmpap, ADIV5_AP_CSW);
+					DEBUG_WARN("AP2 CSW %08" PRIx32 "\n", value);
+					if (platform_timeout_is_expired(&timeout))
+						break;
+				} while (value);
+				adiv5_ap_write(&tmpap, ADIV5_AP_TAR, 7);
+				platform_delay(20);
+				do {
+					value = adiv5_ap_read(&tmpap, ADIV5_AP_DRW) & 0xffff;
+					DEBUG_WARN("AP2 DRQ %08" PRIx32 "\n", value);
+					if (platform_timeout_is_expired(&timeout))
+						break;
+				} while(value);
+			}
+		}
+	}
 	/* Probe for APs on this DP */
 	uint32_t last_base = 0;
 	int void_aps = 0;
