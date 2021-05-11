@@ -88,11 +88,16 @@ static void gdb_if_update_buf(void)
 		count_new = 0;
 		out_ptr = 0;
 		usbd_ep_nak_set(usbdev, CDCACM_GDB_ENDPOINT, 0);
+	} else {
+		WAIT_FOR_INTERRUPT();
 	}
 	asm volatile ("cpsie i; isb");
 #else
 	count_out = usbd_ep_read_packet(usbdev, CDCACM_GDB_ENDPOINT,
 	                                buffer_out, CDCACM_PACKET_SIZE);
+	if (!count_out) {
+		WAIT_FOR_INTERRUPT();
+	}
 	out_ptr = 0;
 #endif
 }

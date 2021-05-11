@@ -30,7 +30,12 @@
 void platform_init(int argc, char **argv);
 #else
 void platform_init(void);
+# if !defined(WAIT_FOR_INTERRUPT)
+#  include <libopencmsis/core_cm3.h>
+#  define WAIT_FOR_INTERRUPT() __WFI()
+# endif
 #endif
+
 
 typedef struct platform_timeout platform_timeout;
 void platform_timeout_set(platform_timeout *t, uint32_t ms);
