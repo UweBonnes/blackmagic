@@ -570,6 +570,7 @@ static int stm32l4_flash_write(struct target_flash *f,
                                target_addr dest, const void *src, size_t len)
 {
 	target *t = f->t;
+	stm32l4_flash_unlock(t);
 	stm32l4_flash_write32(t, FLASH_CR, FLASH_CR_PG);
 	target_mem_write(t, dest, src, len);
 	/* Wait for completion or an error */

@@ -309,6 +309,7 @@ static int stm32f1_flash_write(struct target_flash *f,
 	uint32_t sr;
 	size_t length = 0;
 	if (dest < FLASH_BANK_SPLIT) {
+		stm32f1_flash_unlock(t, 0);
 		if ((dest + len - 1) >= FLASH_BANK_SPLIT)
 			length = FLASH_BANK_SPLIT - dest;
 		else
@@ -334,6 +335,7 @@ static int stm32f1_flash_write(struct target_flash *f,
 	}
 	length = len - length;
 	if ((t->idcode == 0x430) && length) { /* Write on bank 2 */
+		stm32f1_flash_unlock(t, FLASH_BANK2_OFFSET);
 		target_mem_write32(t, FLASH_CR + FLASH_BANK2_OFFSET, FLASH_CR_PG);
 		cortexm_mem_write_sized(t, dest, src, length, ALIGN_HALFWORD);
 		/* Read FLASH_SR to poll for BSY bit */
