@@ -431,6 +431,7 @@ static int stm32f4_flash_write(struct target_flash *f,
 	target *t = f->t;
 	uint32_t sr;
 	enum align psize = ((struct stm32f4_flash *)f)->psize;
+	stm32f4_flash_unlock(t);
 	target_mem_write32(t, FLASH_CR,
 					   (psize * FLASH_CR_PSIZE16) | FLASH_CR_PG);
 	cortexm_mem_write_sized(t, dest, src, len, psize);

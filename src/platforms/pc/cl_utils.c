@@ -68,7 +68,7 @@ struct mmap_data {
 };
 int cl_debuglevel;
 static struct mmap_data map; /* Portable way way to nullify the struct!*/
-
+static void *data_for_overwrite;
 
 static int bmp_mmap(char *file, struct mmap_data *map)
 {
@@ -160,8 +160,11 @@ static void cl_help(char **argv)
                "\t\t\t  connected to TMS, TDO to TDI with eventual resistor\n");
 	DEBUG_WARN("\t-E\t\t: Erase flash until flash end or for given size\n");
 	DEBUG_WARN("\t-w\t\t: Write binary file to target flash (default).\n");
+	DEBUG_WARN("\t-o\t\t: Write binary file to target flash w/o erase.\n");
+	DEBUG_WARN("\t-O\t\t: Write binary file to target flash w/o erase, but with verify.\n");
 	DEBUG_WARN("\t-V\t\t: Verify flash against binary file. Can be combined\n"
-	           "\t\t\t  with -w to verify right after programming.\n");
+	           "\t\t\t  with -w to verify right after programming.\n"
+	           "\t\t\t  or with -o to verify right after programming w/o erase.\n");
 	DEBUG_WARN("\t-r\t\t: Read flash and write to binary file\n");
 	DEBUG_WARN("\t-p\t\t: Supplies power to the target (where applicable)\n");
 	DEBUG_WARN("\t-R\t\t: Reset device\n");
@@ -185,7 +188,7 @@ void cl_init(BMP_CL_OPTIONS_t *opt, int argc, char **argv)
 	opt->opt_flash_size = 0xffffffff;
 	opt->opt_flash_start = 0xffffffff;
 	opt->opt_max_swj_frequency = 4000000;
-	while((c = getopt(argc, argv, "eEhHv:d:f:s:I:c:Cln:m:M:wVtTa:S:jpP:rR")) != -1) {
+	while((c = getopt(argc, argv, "eEhHv:d:f:s:I:c:Cln:m:M:oOwVtTa:S:jpP:rR")) != -1) {
 		switch(c) {
 		case 'c':
 			if (optarg)
@@ -251,6 +254,15 @@ void cl_init(BMP_CL_OPTIONS_t *opt, int argc, char **argv)
 			break;
 		case 'T':
 			opt->opt_mode = BMP_MODE_SWJ_TEST;
+			break;
+		case 'o':
+			if (opt->opt_mode == BMP_MODE_FLASH_VERIFY)
+				opt->opt_mode = BMP_MODE_FLASH_OVERWRITE_VERIFY;
+			else
+				opt->opt_mode = BMP_MODE_FLASH_WRITE;
+			break;
+		case 'O':
+			opt->opt_mode = BMP_MODE_FLASH_OVERWRITE_VERIFY;
 			break;
 		case 'w':
 			if (opt->opt_mode == BMP_MODE_FLASH_VERIFY)
@@ -418,11 +430,14 @@ int cl_execute(BMP_CL_OPTIONS_t *opt)
 	}
 	if (opt->opt_flash_start == 0xffffffff)
 		opt->opt_flash_start = lowest_flash_start;
-	if ((opt->opt_flash_size == 0xffffffff) &&
+	if ((opt->opt_flash_size == 0xffffffff)	&&
 		(opt->opt_mode != BMP_MODE_FLASH_WRITE) &&
-	    (opt->opt_mode != BMP_MODE_FLASH_VERIFY) &&
+		(opt->opt_mode != BMP_MODE_FLASH_VERIFY) &&
+		(opt->opt_mode != BMP_MODE_FLASH_OVERWRITE) &&
+		(opt->opt_mode != BMP_MODE_FLASH_OVERWRITE_VERIFY) &&
 		(opt->opt_mode != BMP_MODE_FLASH_VERIFY))
 		opt->opt_flash_size = lowest_flash_size;
+
 	if (opt->opt_mode == BMP_MODE_SWJ_TEST) {
 		switch (t->core[0]) {
 		case 'M':
@@ -445,7 +460,9 @@ int cl_execute(BMP_CL_OPTIONS_t *opt)
 	int read_file = -1;
 	if ((opt->opt_mode == BMP_MODE_FLASH_WRITE) ||
 	    (opt->opt_mode == BMP_MODE_FLASH_VERIFY) ||
-	    (opt->opt_mode == BMP_MODE_FLASH_WRITE_VERIFY)) {
+	    (opt->opt_mode == BMP_MODE_FLASH_WRITE_VERIFY) ||
+	    (opt->opt_mode == BMP_MODE_FLASH_OVERWRITE) ||
+	    (opt->opt_mode == BMP_MODE_FLASH_OVERWRITE_VERIFY)) {
 		int mmap_res = bmp_mmap(opt->opt_flash_file, &map);
 		if (mmap_res) {
 			DEBUG_WARN("Can not map file: %s. Aborting!\n", strerror(errno));
@@ -479,7 +496,7 @@ int cl_execute(BMP_CL_OPTIONS_t *opt)
 	} else if ((opt->opt_mode == BMP_MODE_FLASH_WRITE) ||
 	           (opt->opt_mode == BMP_MODE_FLASH_WRITE_VERIFY)) {
 		DEBUG_INFO("Erase    %zu bytes at 0x%08" PRIx32 "\n", map.size,
-			  opt->opt_flash_start);
+				   opt->opt_flash_start);
 		uint32_t start_time = platform_time_ms();
 		unsigned int erased = target_flash_erase(t, opt->opt_flash_start,
 												 map.size);
@@ -488,7 +505,7 @@ int cl_execute(BMP_CL_OPTIONS_t *opt)
 			goto free_map;
 		} else {
 			DEBUG_INFO("Flashing %zu bytes at 0x%08" PRIx32 "\n",
-				  map.size, opt->opt_flash_start);
+					   map.size, opt->opt_flash_start);
 			unsigned int flashed = target_flash_write(t, opt->opt_flash_start,
 													  map.data, map.size);
 			/* Buffered write cares for padding*/
@@ -507,10 +524,61 @@ int cl_execute(BMP_CL_OPTIONS_t *opt)
 			target_reset(t);
 			goto free_map;
 		}
+	} else if ((opt->opt_mode == BMP_MODE_FLASH_OVERWRITE) ||
+	           (opt->opt_mode == BMP_MODE_FLASH_OVERWRITE_VERIFY)) {
+		struct target_flash *f = t->flash;
+		uint32_t mask = f->buf_size - 1;
+		uint32_t buffer_start = opt->opt_flash_start & ~mask;
+		uint32_t buffer_end = ((opt->opt_flash_start + map.size + f->buf_size) &
+							   ~mask) - 1;
+		int aligned_size = buffer_end - buffer_start + 1;
+		data_for_overwrite = malloc(aligned_size);
+		if (!data_for_overwrite) {
+			DEBUG_WARN("Can not malloc memory for flash overwrite "
+					   "operation\n");
+			return res;
+		}
+		DEBUG_INFO("Overwrite 0x%08" PRIx32 " for 0x%" PRIx32
+				   " bytes for area 0x%08" PRIx32
+				   " end 0x%08" PRIx32 "\n",
+				   opt->opt_flash_start, map.size,
+				   buffer_start, buffer_end);
+		/* Keep it simple, read whole trunk !*/
+		bool n_read = target_mem_read
+			(t, data_for_overwrite, buffer_start, aligned_size);
+		if (n_read) {
+			DEBUG_WARN("Can not read old data\n");
+			goto free_map;
+		}
+		memcpy (data_for_overwrite + (opt->opt_flash_start & mask),
+				map.data, map.size);
+		unsigned int flashed = target_flash_write
+			(t, buffer_start, data_for_overwrite, aligned_size);
+		if (flashed) {
+			DEBUG_WARN("Flash overwrite failed!\n");
+		} else {
+			DEBUG_INFO("Flash overwrite Success!\n");
+			res = 0;
+		}
+		if (target_flash_done(t)) {
+			DEBUG_WARN("Flash overwrite finish failed!\n");
+		} else {
+			DEBUG_INFO("Flash overwrite finish success!\n");
+			res = 0;
+		}
+		if (opt->opt_mode == BMP_MODE_FLASH_OVERWRITE_VERIFY) {
+			opt->opt_flash_start = buffer_start;
+			opt->opt_flash_size = aligned_size;
+		} else {
+			target_reset(t);
+			free(data_for_overwrite);
+			goto free_map;
+		}
 	}
 	if ((opt->opt_mode == BMP_MODE_FLASH_READ) ||
 	    (opt->opt_mode == BMP_MODE_FLASH_VERIFY) ||
-	    (opt->opt_mode == BMP_MODE_FLASH_WRITE_VERIFY)) {
+	    (opt->opt_mode == BMP_MODE_FLASH_WRITE_VERIFY) ||
+	    (opt->opt_mode == BMP_MODE_FLASH_OVERWRITE_VERIFY)) {
 #define WORKSIZE 1024
 		uint8_t *data = alloca(WORKSIZE);
 		if (!data) {
@@ -523,10 +591,17 @@ int cl_execute(BMP_CL_OPTIONS_t *opt)
 				   " bytes to %s\n", opt->opt_flash_start,  opt->opt_flash_size,
 				   opt->opt_flash_file);
 		uint32_t flash_src = opt->opt_flash_start;
-		size_t size = (opt->opt_mode == BMP_MODE_FLASH_READ) ? opt->opt_flash_size:
-			map.size;
+		size_t size = map.size;
+		switch(opt->opt_mode) {
+		case BMP_MODE_FLASH_READ:
+		case BMP_MODE_FLASH_OVERWRITE_VERIFY:
+			size = opt->opt_flash_size;
+			break;
+		default:
+			size = map.size;
+		}
 		int bytes_read = 0;
-		void *flash = map.data;
+		void *flash = (BMP_MODE_FLASH_OVERWRITE_VERIFY) ? data_for_overwrite: map.data;
 		uint32_t start_time = platform_time_ms();
 		while (size) {
 			int worksize = (size > WORKSIZE) ? WORKSIZE : size;
@@ -545,12 +620,19 @@ int cl_execute(BMP_CL_OPTIONS_t *opt)
 				bytes_read += worksize;
 			}
 			if ((opt->opt_mode == BMP_MODE_FLASH_VERIFY) ||
-			    (opt->opt_mode == BMP_MODE_FLASH_WRITE_VERIFY)) {
+			    (opt->opt_mode == BMP_MODE_FLASH_WRITE_VERIFY) ||
+			    (opt->opt_mode == BMP_MODE_FLASH_OVERWRITE_VERIFY)) {
 				int difference = memcmp(data, flash, worksize);
-				if (difference){
-					DEBUG_WARN("Verify failed at flash region 0x%08"
-							   PRIx32 "\n", flash_src);
-					return -1;
+				if (difference) {
+					uint8_t *q = (uint8_t *) flash;
+					for (int i = 0; i < worksize; i++) {
+						if (data[i] != q[i]) {
+							DEBUG_WARN("Verify failed at flash 0x%08"
+							   PRIx32 "\n", flash_src + i);
+							res= -1;
+							goto free_map;
+						}
+					}
 				}
 				flash += worksize;
 			} else if (read_file != -1) {
@@ -581,6 +663,7 @@ int cl_execute(BMP_CL_OPTIONS_t *opt)
   target_detach:
 	if (t)
 		target_detach(t);
+	free(data_for_overwrite);
 	target_list_free();
 	return res;
 }
