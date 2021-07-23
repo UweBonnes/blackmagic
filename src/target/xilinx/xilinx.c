@@ -67,9 +67,10 @@ unsigned int xilinx(
 		dev->jd_descr = "XILINX XCFxxP";
 		expected_irlen =  16;
 		dev->jd_descr = "XC2FxxP";
-	} else if (product > 0x504) {
+	} else if (product > 0x503) {
 		dev->jd_descr = "XILINX XCFxxS";
 		expected_irlen =  8;
+		*jd_handler = &xcfs_handler;
 	} else if (product > 0x502) {
 		dev->jd_descr = "XILINX XC18V";
 		expected_irlen =  8;

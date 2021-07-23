@@ -549,6 +549,8 @@ void libftdi_jtagtap_tdi_tdo_seq(
 	uint8_t *DO, const uint8_t final_tms, const uint8_t *DI, int ticks)
 {
 	if(!ticks) return;
+	if (ticks > 32)
+		DEBUG_WARN("libftdi_jtagtap_tdi_tdo_seq %d ticks\n", ticks);
 	DEBUG_PROBE("jtagtap_tdi_tdo_seq %s %s  %3x ticks %d\n", (DO)? "DO":"  ",
 				(final_tms)? "final":"     ", (DI)? DI[0] : 0xfff, ticks);
 	int rsize, rticks;

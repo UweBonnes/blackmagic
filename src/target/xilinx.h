@@ -41,7 +41,9 @@
 unsigned int xilinx(
 	uint32_t product,
 	void (**jd_handler)(jtag_dev_t *jd),
-	jtag_dev_t *jtag_dev);
+	jtag_dev_t *jtag_dev
+	);
 void xc2c_handler(jtag_dev_t *jd);
+void xcfs_handler(jtag_dev_t *jd);
 # endif
 #endif
