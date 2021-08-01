@@ -109,6 +109,10 @@
 #define REMOTE_MEM_WRITE_SIZED    'H'
 #define REMOTE_AP_MEM_WRITE_SIZED 'm'
 
+/* High level AVR8 elements */
+#define REMOTE_AVR8_PACKET      'A'
+#define REMOTE_AVR8_MEM_READ    'R'
+#define REMOTE_AVR8_FLASH_WRITE 'W'
 
 /* Generic protocol elements */
 #define REMOTE_GEN_PACKET  'G'
@@ -192,6 +196,11 @@
 			'%','0', '2', 'x', '%', '0', '2', 'x', HEX_U32(csw), '%', '0', '2', 'x', HEX_U32(address), HEX_U32(count), 0}
 #define REMOTE_MEM_WRITE_SIZED_STR (char []){ REMOTE_SOM, REMOTE_HL_PACKET, REMOTE_AP_MEM_WRITE_SIZED, \
 			'%','0', '2', 'x', '%','0','2','x', HEX_U32(address), HEX_U32(count), 0}
+
+#define REMOTE_AVR8_MEM_READ_STR (char []){ REMOTE_SOM, REMOTE_AVR8_PACKET, REMOTE_AVR8_MEM_READ, \
+			'%','0', '2', 'x', '%','0','6','x','%','0','6','x', REMOTE_EOM, 0}
+#define REMOTE_AVR8_FLASH_WRITE_STR (char []){ REMOTE_SOM, REMOTE_AVR8_PACKET, REMOTE_AVR8_FLASH_WRITE, \
+			'%','0', '2', 'x', '%','0','6','x','%','0','6','x', 0}
 
 uint64_t remotehston(uint32_t limit, char *s);
 void remotePacketProcess(uint8_t i, char *packet);

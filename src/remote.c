@@ -374,8 +374,7 @@ void remotePacketProcessGEN(uint8_t i, char *packet)
     }
 }
 
-void remotePacketProcessHL(uint8_t i, char *packet)
-
+static void remotePacketProcessHL(uint8_t i, char *packet)
 {
 	(void)i;
 	SET_IDLE_STATE(0);
@@ -477,24 +476,62 @@ void remotePacketProcessHL(uint8_t i, char *packet)
 	SET_IDLE_STATE(1);
 }
 
+static void remotePacketProcessAVR8(uint8_t i, char *packet)
+{
+	if (i < 16) {
+		_respond(REMOTE_RESP_ERR, REMOTE_ERROR_WRONGLEN);
+		return;
+	}
+	SET_IDLE_STATE(0);
+	char *p = packet + 1;
+	char index = *p++;
+	uint32_t jtag_index = remotehston(2, p);
+	p += 2;
+	uint32_t addr = remotehston(6, p);
+	p += 6;
+	uint32_t len = remotehston(6, p);
+	p += 6;
+	void *dest;
+	void *src;
+	switch (index) {
+	case  REMOTE_AVR8_MEM_READ:
+		dest = packet;
+		avr8_mem_read_firmware(jtag_index, dest, addr, len);
+		_respond_buf(REMOTE_RESP_OK, dest, len);
+		break;
+	case  REMOTE_AVR8_FLASH_WRITE:
+		src = packet;
+		unhexify(src, &packet[16], len);
+		avr8_mem_write_firmware(jtag_index, addr, src, len);
+		_respond(REMOTE_RESP_OK, 0);
+		break;
+	default:
+		_respond(REMOTE_RESP_ERR, 0);
+	}
+	SET_IDLE_STATE(1);
+}
 
 void remotePacketProcess(uint8_t i, char *packet)
 {
 	switch (packet[0]) {
-    case REMOTE_SWDP_PACKET:
+    case REMOTE_SWDP_PACKET: /* S */
 		remotePacketProcessSWD(i,packet);
 		break;
 
-    case REMOTE_JTAG_PACKET:
+    case REMOTE_JTAG_PACKET: /* J */
 		remotePacketProcessJTAG(i,packet);
 		break;
 
-    case REMOTE_GEN_PACKET:
+    case REMOTE_GEN_PACKET: /* G */
 		remotePacketProcessGEN(i,packet);
 		break;
 
-    case REMOTE_HL_PACKET:
+    case REMOTE_HL_PACKET:  /* H */
 		remotePacketProcessHL(i, packet);
+		break;
+
+    case REMOTE_AVR8_PACKET: /* A */
+		remotePacketProcessAVR8(i, packet);
 		break;
 
     default: /* Oh dear, unrecognised, return an error */

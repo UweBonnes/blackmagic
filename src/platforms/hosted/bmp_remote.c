@@ -402,3 +402,92 @@ void remote_add_jtag_dev(int i, const jtag_dev_t *jtag_dev)
 	s = platform_buffer_read(construct, REMOTE_MAX_MSG_SIZE);
 	/* No check for error here. Done in remote_adiv5_dp_defaults!*/
 }
+
+static void remote_avr8_mem_read(target *t, void *dest, uint32_t src,
+								 size_t len)
+{
+	if (len == 0)
+		return;
+	char construct[REMOTE_MAX_MSG_SIZE];
+	int batchsize = (REMOTE_MAX_MSG_SIZE - 0x20) / 2;
+	while (len) {
+		int s;
+		int count = len;
+		if (count > batchsize)
+			count = batchsize;
+		s = snprintf(construct, REMOTE_MAX_MSG_SIZE, REMOTE_AVR8_MEM_READ_STR,
+					 t->jtag_index, src, count);
+		platform_buffer_write((uint8_t*)construct, s);
+		s = platform_buffer_read((uint8_t*)construct, REMOTE_MAX_MSG_SIZE);
+		if ((s > 0) && (construct[0] == REMOTE_RESP_OK)) {
+			unhexify(dest, (const char*)&construct[1], count);
+			src  += count;
+			dest += count;
+			len  -= count;
+			continue;
+		} else {
+			if(construct[0] == REMOTE_RESP_ERR) {
+				DEBUG_WARN("%s returned REMOTE_RESP_ERR around "
+					   "addr: 0x%08" PRIx32 "\n", __func__, src);
+				break;
+			} else {
+				DEBUG_WARN("%s error %d around 0x%08" PRIx32 "\n",
+					   __func__, s, src);
+				break;
+			}
+		}
+	}
+}
+
+void remote_avr8_mem_write(uint32_t jtag_index, target_addr dest,
+							const void *src, size_t len)
+{
+	if (len == 0)
+		return;
+	char construct[REMOTE_MAX_MSG_SIZE];
+	int batchsize = (REMOTE_MAX_MSG_SIZE - 0x20) / 2;
+	while (len) {
+		int count = len;
+		if (count > batchsize)
+			count = batchsize;
+		int s = snprintf(construct, REMOTE_MAX_MSG_SIZE,
+						 REMOTE_AVR8_FLASH_WRITE_STR,
+						 jtag_index, dest, count);
+		char *p = construct + s;
+		hexify(p, src, count);
+		p += 2 * count;
+		src  += count;
+		dest += count;
+		len  -= count;
+		*p++ = REMOTE_EOM;
+		*p   = 0;
+		platform_buffer_write((uint8_t*)construct, p - construct);
+		s = platform_buffer_read((uint8_t*)construct, REMOTE_MAX_MSG_SIZE);
+		if ((s > 0) && (construct[0] == REMOTE_RESP_OK)) {
+			continue;
+		} else {
+			if(construct[0] == REMOTE_RESP_ERR) {
+				DEBUG_WARN("%s returned REMOTE_RESP_ERR around "
+					   "addr: 0x%08" PRIx32 "\n", __func__, src);
+				break;
+			} else {
+				DEBUG_WARN("%s error %d around 0x%08" PRIx32 "\n",
+					   __func__, s, src);
+				break;
+			}
+		}
+	}
+	return;
+}
+
+void remote_avr8_defaults(target *t)
+ {
+	 char construct[] = {REMOTE_SOM, REMOTE_AVR8_PACKET, REMOTE_EOM, 0};
+	 platform_buffer_write((uint8_t*)construct, sizeof(construct));
+	 int s = platform_buffer_read((uint8_t*)construct, REMOTE_MAX_MSG_SIZE);
+	 if ((!s) || (construct[1] != ('0' + REMOTE_ERROR_WRONGLEN))) {
+		 DEBUG_WARN("Upgrade firmware for faster AVR8 read\n");
+		 return;
+	 }
+	 t->mem_read = remote_avr8_mem_read;
+ }

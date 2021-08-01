@@ -562,3 +562,9 @@ void adiv5_dp_abort(struct ADIv5_DP_s *dp, uint32_t abort)
 	DEBUG_TARGET("Abort: %08" PRIx32 "\n", abort);
 	return dp->abort(dp, abort);
 }
+
+void avr8_defaults(target *t)
+{
+	if ((info.bmp_type == BMP_TYPE_BMP) && !cl_opts.opt_no_hl)
+		return remote_avr8_defaults(t);
+}

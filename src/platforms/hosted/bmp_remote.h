@@ -41,5 +41,8 @@ uint32_t remote_max_frequency_get(void);
 const char *platform_target_voltage(void);
 void remote_adiv5_dp_defaults(ADIv5_DP_t *dp);
 void remote_add_jtag_dev(int i, const jtag_dev_t *jtag_dev);
+void remote_avr8_defaults(target *t);
+//void remote_avr8_flash_write(uint32_t jtag_index, target_addr dest,
+//							const void *src, size_t len);
 #define __BMP_REMOTE_H_
 #endif

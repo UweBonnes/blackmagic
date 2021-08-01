@@ -101,6 +101,11 @@ enum target_breakwatch {
 int target_breakwatch_set(target *t, enum target_breakwatch, target_addr, size_t);
 int target_breakwatch_clear(target *t, enum target_breakwatch, target_addr, size_t);
 
+/* AVR8 functions */
+void avr8_mem_read_firmware(uint32_t jtag_index, void *dest, target_addr src,
+							size_t len);
+int avr8_mem_write_firmware(uint32_t jtag_index, target_addr dest,
+							   const void *src, size_t len);
 /* Command interpreter */
 void target_command_help(target *t);
 int target_command(target *t, int argc, const char *argv[]);
