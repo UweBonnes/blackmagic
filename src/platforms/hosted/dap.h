@@ -92,4 +92,8 @@ void dap_jtagtap_tdi_tdo_seq(uint8_t *DO, bool final_tms, const uint8_t *TMS,
 int dap_jtag_configure(void);
 void dap_swdptap_seq_out(uint32_t MS, int ticks);
 void dap_swdptap_seq_out_parity(uint32_t MS, int ticks);
+void dap_shift_ir(jtag_proc_t *jp, uint8_t jd_index, uint32_t ir,
+				  uint32_t *ir_out);
+void dap_shift_dr(jtag_proc_t *jp, uint8_t jd_index, uint8_t *dout,
+				  const uint8_t *din, int ticks);
 #endif // _DAP_H_
