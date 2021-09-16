@@ -260,6 +260,23 @@ cable_desc_t cable_desc[] = {
 		.init.ddr_high =  PIN4 | PIN3 | PIN1 | PIN0,
 		.name = "arm-usb-ocd-h"
 	},
+	/* ESP Prog:
+	 *
+	 * JTAG buffered on Interface A -> No SWD
+	 * Standard VID/PID/Product
+	 * No nRST on the 10 pin connectors
+	 *
+	 * JTAG enabled by default, ESP_EN pulled up,
+	 * inverted by U4 and enabling JTAG by U5
+	 */
+	{
+		.vendor = 0x0403,
+		.product = 0x6010,
+		.interface = INTERFACE_A,
+		.name = "esp-prog"
+		// No explicit reset
+		// SWD not possible
+	},
 	{
 	}
 };
