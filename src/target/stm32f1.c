@@ -117,6 +117,15 @@ static void stm32f1_add_flash(target *t,
 	target_add_flash(t, f);
 }
 
+#define REG_DBGMCU2       0xE0042008
+#define REG_DBGMCU2EN     0xE004200C
+
+static void gd32f1_eclic_reset(target *t)
+{
+	target_mem_write32(t,  REG_DBGMCU2EN,  0x4b5a6978);
+	target_mem_write32(t,  REG_DBGMCU2, 0x1);
+}
+
 /**
     \brief identify the correct gd32 f1/f3 chip
     GD32 : STM32 compatible chip
@@ -133,6 +142,7 @@ bool gd32f1_probe(target *t)
 	uint32_t ramSize=signature >>16 ;
 	if (t->cpuid == 0x80000022) /* GD32VF103 */ {
 		t->driver = "GD32VF1";
+		t->reset = gd32f1_eclic_reset;
 	} else {
 		switch(t->idcode) {
 		case 0x414:  /* Gigadevice gd32f303 */
