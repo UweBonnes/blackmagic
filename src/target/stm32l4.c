@@ -140,6 +140,7 @@ enum ID_STM32L4 {
 	ID_STM32G47  = 0x469u, /* RM0440, Rev.1 */
 	ID_STM32G49  = 0x479u, /* RM0440, Rev.6 */
 	ID_STM32L55  = 0x472u, /* RM0438, Rev.4 */
+	ID_STM32U5   = 0x482u, /* */
 	ID_STM32WLXX = 0x497u, /* RM0461, Rev.3, RM453, Rev.1 */
 };
 
@@ -150,6 +151,7 @@ enum FAM_STM32L4 {
 	FAM_STM32G4xx = 5,
 	FAM_STM32L55x = 6,
 	FAM_STM32WLxx = 7,
+	FAM_STM32U4   = 8,
 };
 
 #define DUAL_BANK	0x80u
@@ -487,13 +489,19 @@ bool stm32l4_probe(target *t)
 {
 	uint32_t idcode_reg = STM32L4_DBGMCU_IDCODE_PHYS;
 	ADIv5_AP_t *ap = cortexm_ap(t);
-	if (ap->dp->idcode == 0x0Be12477) {
-		idcode_reg = STM32L5_DBGMCU_IDCODE_PHYS;
-		if ((stm32l4_flash_read32(t, FLASH_OPTR)) & L5_FLASH_OPTR_TZEN) {
-			DEBUG_WARN("STM32L5 Trust Zone enabled\n");
+	uint32_t idcode;
+	if (ap->dp->targetid) {
+		idcode = (ap->dp->targetid >> 16) & 0xfff;
+		switch (idcode) {
+		case ID_STM32L55:
+			if ((stm32l4_flash_read32(t, FLASH_OPTR)) & L5_FLASH_OPTR_TZEN) {
+				DEBUG_WARN("STM32L5 Trust Zone enabled\n");
+			}
+			break;
 		}
+	} else {
+		idcode = target_mem_read32(t, idcode_reg) & 0xfff;
 	}
-	uint32_t idcode = target_mem_read32(t, idcode_reg) & 0xfff;
 	DEBUG_INFO("Read %" PRIx32 ": %" PRIx32 "\n", idcode_reg, idcode);
 
 	struct stm32l4_info const *chip = stm32l4_get_chip_info(idcode);
