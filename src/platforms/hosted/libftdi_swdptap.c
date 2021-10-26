@@ -216,48 +216,7 @@ int libftdi_swdptap_init(ADIv5_DP_t *dp)
 	return 0;
 }
 
-bool swdptap_bit_in(void)
-{
-	swdptap_turnaround(SWDIO_STATUS_FLOAT);
-	uint8_t cmd[4];
-	int index = 0;
-	bool result = false;
-
-	if (do_mpsse) {
-		uint8_t cmd[2] = {MPSSE_DO_READ | MPSSE_LSB | MPSSE_BITMODE, 0};
-		libftdi_buffer_write(cmd, sizeof(cmd));
-		uint8_t data[1];
-		libftdi_buffer_read(data, sizeof(data));
-		result = (data[0] & 0x80);
-	} else {
-		cmd[index++] = active_cable->bb_swdio_in_port_cmd;
-		cmd[index++] = MPSSE_TMS_SHIFT;
-		cmd[index++] = 0;
-		cmd[index++] = 0;
-		libftdi_buffer_write(cmd, index);
-		uint8_t data[1];
-		libftdi_buffer_read(data, sizeof(data));
-		result = (data[0] &= active_cable->bb_swdio_in_pin);
-	}
-	return result;
-}
-
-void swdptap_bit_out(bool val)
-{
-	swdptap_turnaround(SWDIO_STATUS_DRIVE);
-	if (do_mpsse) {
-		uint8_t cmd[3] = {MPSSE_TDO_SHIFT, 0, (val)? 1:0};
-		libftdi_buffer_write(cmd, sizeof(cmd));
-	} else {
-		uint8_t cmd[3];
-		cmd[0] = MPSSE_TMS_SHIFT;
-		cmd[1] = 0;
-		cmd[2] = (val)? 1 : 0;
-		libftdi_buffer_write(cmd, sizeof(cmd));
-	}
-}
-
-bool swdptap_seq_in_parity(uint32_t *res, int ticks)
+static bool swdptap_seq_in_parity(uint32_t *res, int ticks)
 {
 	assert(ticks == 32);
 	swdptap_turnaround(SWDIO_STATUS_FLOAT);
