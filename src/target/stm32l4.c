@@ -509,12 +509,18 @@ bool stm32l4_probe(target *t)
 {
 	ADIv5_AP_t *ap = cortexm_ap(t);
 	uint32_t idcode;
-	if (ap->dp->targetid > 1) { /* STM32L552 has in valid TARGETID 1 */
+	if (ap->dp->targetid) {
 		idcode = (ap->dp->targetid >> 16) & 0xfff;
+		switch (idcode) {
+		case ID_STM32L55:
+			if ((stm32l4_flash_read32(t, FLASH_OPTR)) & L5_FLASH_OPTR_TZEN) {
+				DEBUG_WARN("STM32L5 Trust Zone enabled\n");
+				/* FIXME: Indicate in the gdb message! */
+			}
+			break;
+		}
 	} else {
 		uint32_t idcode_reg = STM32L4_DBGMCU_IDCODE_PHYS;
-		if (ap->dp->idcode == 0x0Be12477)
-			idcode_reg = STM32L5_DBGMCU_IDCODE_PHYS;
 		idcode = target_mem_read32(t, idcode_reg) & 0xfff;
 		DEBUG_INFO("Idcode %08" PRIx32 "\n", idcode);
 	}
