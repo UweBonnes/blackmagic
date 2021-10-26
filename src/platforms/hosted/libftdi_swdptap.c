@@ -42,13 +42,13 @@ static bool direct_bb_swd;
 						 MPSSE_BITMODE | MPSSE_WRITE_NEG)
 #define MPSSE_TDO_SHIFT (MPSSE_DO_WRITE | MPSSE_LSB |\
 						 MPSSE_BITMODE | MPSSE_WRITE_NEG)
-static void swdptap_turnaround(enum swdio_status dir)
+
+static int swdptap_turnaround_data(enum swdio_status dir, uint8_t *cmd)
 {
 	if (dir == olddir)
-		return;
+		return 0;
 	olddir = dir;
-	uint8_t cmd[16], *p = cmd;
-	DEBUG_PROBE("Turnaround %s: ", (dir == SWDIO_STATUS_FLOAT) ? "float": "drive");
+	uint8_t *p = cmd;
 	if (do_mpsse) {
 		if (dir == SWDIO_STATUS_FLOAT)	/* SWDIO goes to input */ {
 			active_state.data_low |=  active_cable->mpsse_swd_read.set_data_low | MPSSE_DO;
@@ -119,6 +119,16 @@ static void swdptap_turnaround(enum swdio_status dir)
 			*p++ = active_state.ddr_high;
 		}
 	}
+	return p - cmd;
+}
+
+static void swdptap_turnaround(enum swdio_status dir)
+{
+	uint8_t cmd[128], *p = cmd;
+	p += swdptap_turnaround_data(dir, cmd);
+	if (p == cmd)
+		return;
+	DEBUG_PROBE("Turnaround %s: ", (dir == SWDIO_STATUS_FLOAT) ? "float": "drive");
 	libftdi_buffer_write(cmd, p - cmd);
 }
 
@@ -171,47 +181,40 @@ bool libftdi_swd_possible(bool *do_mpsse, bool *direct_bb_swd)
  */
 static void mpsse_fast_swdp_low_read(uint16_t addr)
 {
-	swdptap_turnaround(SWDIO_STATUS_DRIVE); /* 9 */
+	uint8_t cmd[160], *p = cmd;
+	p += swdptap_turnaround_data(SWDIO_STATUS_DRIVE, cmd); /* 9 */
 	unsigned int request = make_packet_request(ADIV5_LOW_READ, addr);
 	if (do_mpsse) {
-		uint8_t cmd[16] = {
-			MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_LSB,
-			1 - 1,
-			0,
-			request
-			};
-		libftdi_buffer_write(cmd, 4); /* 4 Byte */
-		swdptap_turnaround(SWDIO_STATUS_FLOAT); /* 9 Byte */
-		unsigned int index = 0;
-		cmd[index++] = MPSSE_DO_READ | MPSSE_LSB | MPSSE_BITMODE;
-		cmd[index++] = 3 - 1;
-		cmd[index++] = MPSSE_DO_READ | MPSSE_LSB;
-		cmd[index++] = 4 - 1;
-		cmd[index++] = 0;
-		cmd[index++] = MPSSE_DO_READ | MPSSE_LSB | MPSSE_BITMODE;
-		cmd[index++] = 1 - 1;
-		libftdi_buffer_write(cmd, index); /* 7 Byte */
+		*p++ = MPSSE_DO_WRITE | MPSSE_WRITE_NEG | MPSSE_LSB;
+		*p++ = 1 - 1;
+		*p++ = 0;
+		*p++ = request;
+		p += swdptap_turnaround_data(SWDIO_STATUS_FLOAT, p);
+		*p++ = MPSSE_DO_READ | MPSSE_LSB | MPSSE_BITMODE;
+		*p++ = 3 - 1;
+		*p++ = MPSSE_DO_READ | MPSSE_LSB;
+		*p++ = 4 - 1;
+		*p++ = 0;
+		*p++ = MPSSE_DO_READ | MPSSE_LSB | MPSSE_BITMODE;
+		*p++ = 1 - 1;
 	} else {
-		uint8_t cmd[16];
-		unsigned int index = 0;
-		cmd[index++] = MPSSE_TMS_SHIFT;
-		cmd[index++] = 7 - 1;
-		cmd[index++] = request & 0x7f;
+		*p++ = MPSSE_TMS_SHIFT;
+		*p++ = 7 - 1;
+		*p++ = request & 0x7f;
 		request >>= 7;
-		cmd[index++] = MPSSE_TMS_SHIFT;
-		cmd[index++] = 1 - 1;
-		cmd[index++] = request & 0x7f;
-		libftdi_buffer_write(cmd, index); /* 6 Byte */
-		swdptap_turnaround(SWDIO_STATUS_FLOAT); /* 9 Byte*/
-		cmd[0] = active_cable->bb_swdio_in_port_cmd;
-		cmd[1] = MPSSE_TMS_SHIFT;
-		cmd[2] = 0;
-		cmd[3] = 0;
+		*p++ = MPSSE_TMS_SHIFT;
+		*p++ = 1 - 1;
+		*p++ = request & 0x7f;
+		p += swdptap_turnaround_data(SWDIO_STATUS_FLOAT, p);
 		int  bits = 36;
 		while (bits--) {
-			libftdi_buffer_write(cmd, sizeof(cmd)); /* 138 Bytes*/
+			*p++ = active_cable->bb_swdio_in_port_cmd;
+			*p++ = MPSSE_TMS_SHIFT;
+			*p++ = 0;
+			*p++ = 0;
 		}
 	}
+	libftdi_buffer_write(cmd, p - cmd);
 }
 
 static int eval(void *dest, int words)
@@ -384,8 +387,9 @@ int libftdi_swdptap_init(ADIv5_DP_t *dp)
 
 static bool swdptap_seq_in_parity(uint32_t *res, int ticks)
 {
+	uint8_t cmd[128], *p = cmd;
 	assert(ticks == 32);
-	swdptap_turnaround(SWDIO_STATUS_FLOAT);
+	p += swdptap_turnaround_data(SWDIO_STATUS_FLOAT, cmd);
 	unsigned int parity = 0;
 	unsigned int result = 0;
 	if (do_mpsse) {
