@@ -448,6 +448,7 @@ bool cortexm_probe(ADIv5_AP_t *ap)
 			PROBE(lpc11xx_probe); /* LPC24C11 */
 			PROBE(lpc43xx_probe);
 		} else if (ap->ap_partno == 0x4c4) { /* Cortex-M4 ROM */
+			PROBE(lmi_probe);
 			/* The LPC546xx and LPC43xx parts present with the same AP ROM Part
 			Number, so we need to probe both. Unfortunately, when probing for
 			the LPC43xx when the target is actually an LPC546xx, the memory
@@ -465,8 +466,8 @@ bool cortexm_probe(ADIv5_AP_t *ap)
 			PROBE(lpc11xx_probe); /* some of the LPC8xx series, like LPC802 */
 		}
 		/* Info on PIDR of these parts wanted! */
-		PROBE(sam3x_probe);
 		PROBE(lmi_probe);
+		PROBE(sam3x_probe);
 		PROBE(ke04_probe);
 		PROBE(lpc17xx_probe);
 	}
