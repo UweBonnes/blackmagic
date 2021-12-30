@@ -108,6 +108,36 @@ cable_desc_t cable_desc[] = {
 		.name = "ft232h_resistor_swd"
 	},
 	{
+		/* MPSSE_SK (DB0) ----------- SWDCK/JTCK
+		 * MPSSE-DO (DB1) -- 470 R -- SWDIO/JTMS
+		 * MPSSE-DI (DB2) ----------- SWDIO/JTMS
+		 * DO is tristated with SWD read, so
+		 * resistor is not necessary, but protects
+		 * from contentions in case of errors.
+		 * JTAG not possible.*/
+		.vendor  = 0x0403,
+		.product = 0x6010,/*FT2232H*/
+		.interface = INTERFACE_A,
+		.mpsse_swd_read.set_data_low  = MPSSE_DO,
+		.mpsse_swd_write.set_data_low = MPSSE_DO,
+		.name = "ft2232h_resistor_swd"
+	},
+	{
+		/* Direct connection from FTDI to Jtag/Swd.
+		 * Pin 6 direct connected to RST.*/
+		.vendor  = 0x0403,
+		.product = 0x6010,/*FT2232H*/
+		.interface = INTERFACE_A,
+		.bb_swdio_in_port_cmd = GET_BITS_LOW,
+		.bb_swdio_in_pin = MPSSE_CS,
+		.init.data_low = PIN6, /* PULL nRST high*/
+		.assert_srst.data_low   = ~PIN6,
+		.assert_srst.ddr_low    =  PIN6,
+		.deassert_srst.data_low =  PIN6,
+		.deassert_srst.ddr_low  = ~PIN6,
+		.name = "ft2232h"
+	},
+	{
 		/* Buffered connection from FTDI to Jtag/Swd.
 		 * TCK and TMS not independant switchable!
 		 * SWD not possible.
