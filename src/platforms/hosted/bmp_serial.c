@@ -245,7 +245,7 @@ int find_debuggers(BMP_CL_OPTIONS_t *cl_opts, bmp_info_t *info)
 				/* With serial number given and partial match, we are done!*/
 				strncpy(info->serial, serial, sizeof(info->serial));
 				int res = snprintf(info->manufacturer, sizeof(info->manufacturer), "Black Magic Probe(%s)", type);
-				if (res)
+				if (res == sizeof(info->manufacturer))
 					DEBUG_WARN("Overflow\n");
 				strncpy(info->version, version, sizeof(info->version));
 				found_bmps = 1;
@@ -273,11 +273,6 @@ int find_debuggers(BMP_CL_OPTIONS_t *cl_opts, bmp_info_t *info)
 				DEBUG_WARN("Unexpected device name found \"%s\"\n",
 						   dp->d_name);
 			} else if ((found_bmps == 1) && (!cl_opts->opt_list_only)) {
-				strncpy(info->serial, serial, sizeof(info->serial));
-				found_bmps = 1;
-				strncpy(info->serial, serial, sizeof(info->serial));
-				snprintf(info->manufacturer, sizeof(info->manufacturer), "Black Magic Probe%s", type);
-				strncpy(info->version, version, sizeof(info->version));
 				break;
 			} else if (found_bmps > 0) {
 				DEBUG_WARN("%2d: %s, Black Sphere Technologies, Black Magic "
