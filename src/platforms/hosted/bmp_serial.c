@@ -155,9 +155,9 @@ print_probes_info:
 }
 
 #else
-/* Old ID: Black_Sphere_Technologies_Black_Magic_Probe_BFE4D6EC-if00
- * Recent: Black_Sphere_Technologies_Black_Magic_Probe_v1.7.1-212-g212292ab_7BAE7AB8-if00
- * usb-Black_Sphere_Technologies_Black_Magic_Probe__SWLINK__v1.7.1-155-gf55ad67b-dirty_DECB8811-if00
+/* Old ID: usb-Black_Sphere_Technologies_Black_Magic_Probe_BFE4D6EC-if00
+ * Later:  usb-Black_Sphere_Technologies_Black_Magic_Probe_v1.7.1-212-g212292ab_7BAE7AB8-if00
+ * Recent: usb-Black_Sphere_Technologies_Black_Magic_Probe__SWLINK__v1.7.1-155-gf55ad67b-dirty_DECB8811-if00
  */
 #define BMP_IDSTRING "usb-Black_Sphere_Technologies_Black_Magic_Probe"
 #define DEVICE_BY_ID "/dev/serial/by-id/"
@@ -171,50 +171,51 @@ print_probes_info:
 static int scan_linux_id(char *name, char *type, char *version, char  *serial)
 {
 	name += strlen(BMP_IDSTRING) + 1;
-	while (*name == '_')
-		name++;
-	if (!*name) {
-		DEBUG_WARN("Unexpected end\n");
-		return -1;
-	}
-	char *p = name;
-	char *delims[4] = {0,0,0,0};
-	int underscores = 0;
-	while (*p) {
-		if (*p == '_') {
-			while (p[1] == '_')
-				p++; /* remove multiple underscores */
-			if (underscores > 2)
-				return -1;
-			delims[underscores] = p;
-			underscores ++;
-		}
-		p++;
-	}
-	if (underscores == 0) { /* Old BMP native */
-		int res;
-		res = sscanf(name, "%8s-if00", serial);
-		if (res != 1)
+	if (name[0] == '_')  {/* type follows */
+		char *q = type;
+		*q++ = ' ';
+		*q++ = '(';
+		char *p = name + 1;
+		while (*p != '_')   /* Read until next underscore */
+			*q++=*p++;
+		*q++ = ')';
+		*q++ = 0;           /* Terminate string */
+		while (*p++== '_'); /* Skip underscores */
+		q = version;
+		while (*p != '_')
+			*q++=*p++;
+		*q++ = 0;
+		while (*p++ == '_');
+		q = serial;
+		while (*p != '-')  /* Read until hyphen (-if0) */
+			*q++=*p++;
+		*q++ = 0;
+		if (!strlen(serial))
 			return -1;
-		strcpy(type, "Native");
-		strcpy(version, "Unknown");
-	} else if (underscores == 2) {
-		strncpy(type, name, delims[0] - name - 1);
-		strncpy(version, delims[0] + 1, delims[1] - delims[0] - 1);
-		int res = sscanf(delims[1] + 1, "%8s-if00", serial);
-		if (!res)
+	} else if (name[0] == 'v') { /* Version follows */
+		*type = 0;
+		char *q = version;
+		char *p = name;
+		while (*p != '_')
+			*q++=*p++;
+		*q++ = 0;
+		while (*p++ == '_');
+		q = serial;
+		while (*p != '-')  /* Read until hyphen (-if0) */
+			*q++=*p++;
+		*q++ = 0;
+		if (!strlen(serial))
 			return -1;
-	} else {
-		int res = sscanf(delims[0] + 1, "%8s-if00", serial);
-		if (!res)
+	} else { /* Serial follows */
+		*type = 0;
+		*version = 0;
+		char *q = serial;
+		char *p = name;
+		while (*p != '-')  /* Read until hyphen (-if0) */
+			*q++=*p++;
+		*q++ = 0;
+		if (!strlen(serial))
 			return -1;
-		if (name[0] == 'v') {
-			strcpy(type, "Unknown");
-			strncpy(version, name, delims[0] - name - 1);
-		} else {
-			strncpy(type, name, delims[0] - name);
-			strcpy(type, "Unknown");
-		}
 	}
 	return 0;
 }
@@ -243,7 +244,7 @@ int find_debuggers(BMP_CL_OPTIONS_t *cl_opts, bmp_info_t *info)
 				(cl_opts->opt_position && cl_opts->opt_position == i)) {
 				/* With serial number given and partial match, we are done!*/
 				strncpy(info->serial, serial, sizeof(info->serial));
-				int res = snprintf(info->manufacturer, sizeof(info->manufacturer), "Black Magic Probe (%s)", type);
+				int res = snprintf(info->manufacturer, sizeof(info->manufacturer), "Black Magic Probe(%s)", type);
 				if (res)
 					DEBUG_WARN("Overflow\n");
 				strncpy(info->version, version, sizeof(info->version));
@@ -275,12 +276,12 @@ int find_debuggers(BMP_CL_OPTIONS_t *cl_opts, bmp_info_t *info)
 				strncpy(info->serial, serial, sizeof(info->serial));
 				found_bmps = 1;
 				strncpy(info->serial, serial, sizeof(info->serial));
-				snprintf(info->manufacturer, sizeof(info->manufacturer), "Black Magic Probe (%s)", type);
+				snprintf(info->manufacturer, sizeof(info->manufacturer), "Black Magic Probe%s", type);
 				strncpy(info->version, version, sizeof(info->version));
 				break;
 			} else if (found_bmps > 0) {
 				DEBUG_WARN("%2d: %s, Black Sphere Technologies, Black Magic "
-						   "Probe (%s), %s\n", i, serial, type, version);
+						   "Probe%s, %s\n", i, serial, type, version);
 			}
 		}
 	}
