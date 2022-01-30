@@ -44,11 +44,11 @@ int usbuart_debug_write(const char *buf, size_t len);
 /* Hardware definitions... */
 #define TDI_PORT	GPIOA
 #define TMS_PORT	GPIOB
-#define TCK_PORT	GPIOA
+#define TCK_PORT	GPIOB
 #define TDO_PORT	GPIOA
 #define TDI_PIN		GPIO7
 #define TMS_PIN		GPIO14
-#define TCK_PIN		GPIO5
+#define TCK_PIN		GPIO13
 #define TDO_PIN		GPIO6
 
 #define SWDIO_PORT 	TMS_PORT
