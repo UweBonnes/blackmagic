@@ -588,23 +588,28 @@ void libftdi_jtagtap_tdi_tdo_seq(
 	if (index)
 		libftdi_buffer_write(data, index);
 	if (DO) {
-		int index = 0;
 		uint8_t *tmp = alloca(rsize);
 		libftdi_buffer_read(tmp, rsize);
-		if(final_tms) rsize--;
-
-		while(rsize--) {
-			*DO++ = tmp[index++];
-		}
-		if (rticks == 0)
-			*DO++ = 0;
+		int n_direct = rsize;
+		 /* Fill DO with all bytes but byte from final_tms*/
+		if(final_tms)
+			n_direct--;
+		memcpy(DO, tmp, n_direct);
 		if(final_tms) {
-			rticks++;
-			*(--DO) >>= 1;
-			*DO |= tmp[index] & 0x80;
-		} else DO--;
+			if (!rticks) { /* E.g. with 33 ticks */
+				/* final_tms result is LSB of next byte*/
+				DO[n_direct] = (tmp[n_direct] & 0x80) ? 1 : 0;
+			} else {
+				/* Make room for data from TMS at MSB*/
+				DO[n_direct - 1] >>= 1;
+				/* final tms result is MSB of last byte */
+				DO[n_direct - 1] |= (tmp[n_direct] & 0x80);
+				rticks++;
+			}
+		}
 		if(rticks) {
-			*DO >>= (8-rticks);
+			/* Shift down to LSB*/
+			DO[n_direct - 1] >>= (8 - rticks);
 		}
 	}
 }
