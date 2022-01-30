@@ -84,8 +84,8 @@ void platform_init(void)
 		adc_init();
 		break;
 	case 1:
-		led_error_port = GPIOC;
-		led_error_pin = GPIO13;
+		led_error_port = LED_PORT;
+		led_error_pin = LED_IDLE_RUN;
 		/* Enable MCO Out on PA8*/
 		RCC_CFGR &= ~(0xf << 24);
 		RCC_CFGR |= (RCC_CFGR_MCO_HSE << 24);

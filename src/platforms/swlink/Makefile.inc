@@ -19,6 +19,10 @@ endif
 
 VPATH += platforms/stm32
 
+ifeq ($(BLACKPILLF1), 1)
+CFLAGS += -DBLACKPILLF1
+endif
+
 SRC += 	cdcacm.c	\
 	usbuart.c 	\
 	serialno.c	\
