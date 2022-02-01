@@ -85,11 +85,13 @@ void platform_init(int argc, char **argv)
 	signal(SIGTERM, sigterm_handler);
 	signal(SIGINT, sigterm_handler);
 
-	if (cl_opts.opt_device)
+	if (cl_opts.opt_device) {
 		info.bmp_type = BMP_TYPE_BMP;
-	else if (find_debuggers(&cl_opts, &info))
+	} else if (find_debuggers(&cl_opts, &info)) {
+		bmp_ident(NULL);
+		printf("No debugger found\n");
 		exit(-1);
-
+	}
 	bmp_ident(&info);
 
 	switch (info.bmp_type) {

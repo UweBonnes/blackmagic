@@ -352,9 +352,6 @@ rescan:
 			found_debuggers = 0;
 		}
 	}
-	if (!found_debuggers && access_problems)
-		DEBUG_WARN(
-			"No debugger found. Please check access rights to USB devices!\n");
 	libusb_free_device_list(devs, 1);
 	return found_debuggers == 1 ? 0 : -1;
 }
