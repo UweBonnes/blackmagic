@@ -172,52 +172,39 @@ print_probes_info:
  */
 static int scan_linux_id(char *name, char *type, char *version, char  *serial)
 {
-	name += strlen(BMP_IDSTRING_BLACKSPHERE) + 1;
-	while (*name == '_')
-		name++;
-	if (!*name) {
-		DEBUG_WARN("Unexpected end\n");
-		return -1;
-	}
-	char *p = name;
-	char *delims[4] = {0,0,0,0};
-	int underscores = 0;
-	while (*p) {
-		if (*p == '_') {
-			while (p[1] == '_')
-				p++; /* remove multiple underscores */
-			if (underscores > 2)
-				return -1;
-			delims[underscores] = p;
-			underscores ++;
-		}
-		p++;
-	}
-	if (underscores == 0) { /* Old BMP native */
-		int res;
-		res = sscanf(name, "%8s-if00", serial);
-		if (res != 1)
+	char *p = strstr(name, "Probe_");
+	name = p + strlen("Probe_");
+	if (*name == 'v') { /* Recent native */
+		strcpy(type, "Native");
+		p = strchr(name, '_'); /* Search end of version */
+		if (!p)
 			return -1;
+		*p = 0; /*Terminate */
+		strncpy(version, name, p - name + 1);
+		name = p + 1;
+	} else if (*name == '_') { /*Variants */
+		name++;
+		p = strstr(name, "__"); /* Search end of type */
+		if (!p)
+			return -1;
+		*p = 0; /*Terminate */
+		strncpy(type, name, p - name + 1);
+		name = p + 2; /*skip double underscore */
+		p = strchr(name, '_'); /* Search end of version */
+		if (!p)
+			return -1;
+		*p = 0; /*Terminate */
+		strncpy(version, name, p - name + 1);
+		name = p + 1;
+	} else 	{ /* Old native w/o version */
 		strcpy(type, "Native");
 		strcpy(version, "Unknown");
-	} else if (underscores == 2) {
-		strncpy(type, name, delims[0] - name - 1);
-		strncpy(version, delims[0] + 1, delims[1] - delims[0] - 1);
-		int res = sscanf(delims[1] + 1, "%8s-if00", serial);
-		if (!res)
-			return -1;
-	} else {
-		int res = sscanf(delims[0] + 1, "%8s-if00", serial);
-		if (!res)
-			return -1;
-		if (name[0] == 'v') {
-			strcpy(type, "Unknown");
-			strncpy(version, name, delims[0] - name - 1);
-		} else {
-			strncpy(type, name, delims[0] - name);
-			strcpy(type, "Unknown");
-		}
 	}
+	p = strstr(name, "-if00"); /* Search end of Serial */
+	if (!p)
+		return -1;
+	*p = 0; /*Terminate */
+	strncpy(serial, name, p - name + 1);
 	return 0;
 }
 
