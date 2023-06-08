@@ -413,12 +413,6 @@ bool cortexm_probe(adiv5_access_port_s *ap)
 		PROBE(nrf54l_probe);
 		PROBE(nrf91_probe);
 		break;
-	case JEP106_MANUFACTURER_ATMEL:
-		PROBE(samx7x_probe);
-		PROBE(sam4l_probe);
-		PROBE(samd_probe);
-		PROBE(samx5x_probe);
-		break;
 	case JEP106_MANUFACTURER_ENERGY_MICRO:
 		PROBE(efm32_probe);
 		break;
