@@ -515,23 +515,11 @@ uint32_t stlink_adiv5_clear_error(adiv5_debug_port_s *const dp, const bool proto
 {
 	DEBUG_PROBE("%s (protocol recovery: %s)\n", __func__, protocol_recovery ? "true" : "false");
 	if ((dp->version >= 2 && dp->fault) || protocol_recovery) {
+		stlink_reset_adaptor();
 		/*
-		 * Note that on DPv2+ devices, during a protocol error condition
-		 * the target becomes deselected during line reset. Once reset,
-		 * we must then re-select the target to bring the device back
-		 * into the expected state.
+		 * Stlink has no multi-drop capability.
+		 * After reset there is no need for TARGETSEL on DP V2
 		 */
-		stlink_line_reset();
-		if (dp->version >= 2)
-			/*
-			 * The correct thing to do here is some form of this:
-			 * adiv5_dp_write(dp, ADIV5_DP_TARGETSEL, dp->targetsel);
-			 * but ST-Link adaptors cannot handle this properly right now, so warn instead.
-			 */
-			DEBUG_WARN("ST-Link v2/v3 adaptors cannot handle multi-drop correctly, pretending everything's fine\n");
-		/* Re-select the current AP on completion so we keep talking with the same thing */
-		if (stlink.apsel != STLINK_INVALID_AP)
-			stlink_ap_setup(stlink.apsel);
 		adiv5_dp_read(dp, ADIV5_DP_DPIDR);
 	}
 	const uint32_t err = adiv5_dp_read(dp, ADIV5_DP_CTRLSTAT) &
