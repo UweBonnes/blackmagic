@@ -506,18 +506,16 @@ int stlink_hwversion(void)
 uint32_t stlink_adiv5_clear_error(adiv5_debug_port_s *const dp, const bool protocol_recovery)
 {
 	DEBUG_PROBE("%s (protocol recovery: %s)\n", __func__, protocol_recovery ? "true" : "false");
+#if 0
 	if ((dp->version >= 2 && dp->fault) || protocol_recovery) {
-		/*
-		 * Note that on DPv2+ devices, during a protocol error condition
-		 * the target becomes deselected during line reset. Once reset,
-		 * we must then re-select the target to bring the device back
-		 * into the expected state.
-		 */
 		stlink_reset_adaptor();
-		if (dp->version >= 2)
-			adiv5_dp_write(dp, ADIV5_DP_TARGETSEL, dp->targetsel);
+		/*
+		 * Stlink has no multi-drop capability.
+		 * After reset there is no need for TARGETSEL on DP V2
+		 */
 		adiv5_dp_read(dp, ADIV5_DP_DPIDR);
 	}
+#endif
 	const uint32_t err = adiv5_dp_read(dp, ADIV5_DP_CTRLSTAT) &
 		(ADIV5_DP_CTRLSTAT_STICKYORUN | ADIV5_DP_CTRLSTAT_STICKYCMP | ADIV5_DP_CTRLSTAT_STICKYERR |
 			ADIV5_DP_CTRLSTAT_WDATAERR);
