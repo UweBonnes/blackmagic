@@ -38,6 +38,10 @@
 #include "adiv5.h"
 #include "target.h"
 
+/* Check for separate or unified cache*/
+#define CORTEXM_CLIDR_HAS_ICACHE           5U
+#define CORTEXM_CLIDR_HAS_DCACHE           6U
+
 #define CORTEX_CTR_FORMAT_SHIFT            29U
 #define CORTEX_CTR_FORMAT_ARMv6            0U
 #define CORTEX_CTR_FORMAT_ARMv7            4U
