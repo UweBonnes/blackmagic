@@ -556,7 +556,8 @@ static uint32_t stm32l4_idcode_reg_address(target_s *const t)
 {
 	const stm32l4_priv_s *const priv = (const stm32l4_priv_s *)t->target_storage;
 	const stm32l4_device_info_s *const device = priv->device;
-	if (device->family == STM32L4_FAMILY_L55x) {
+	if (device->family == STM32L4_FAMILY_L55x ||
+		device->family == STM32L4_FAMILY_U5xx) {
 		stm32l5_flash_enable(t);
 		return STM32L5_DBGMCU_IDCODE_PHYS;
 	}
