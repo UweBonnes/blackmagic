@@ -473,6 +473,7 @@ bool stlink_init(void)
 	}
 	stlink.apsel = STLINK_INVALID_AP;
 	stlink_reset_adaptor();
+	stlink_ap_cleanup();
 	return true;
 }
 
@@ -649,6 +650,10 @@ static bool stlink_ap_setup(const uint8_t ap)
 {
 	uint8_t data[2];
 	DEBUG_PROBE("%s: AP %u\n", __func__, ap);
+	if (ap > 8) {
+		DEBUG_WARN("Reject ap_setup %d as Stlink can only handle AP 0..8\n", ap);
+		return false;
+	}
 	stlink_simple_request(STLINK_DEBUG_COMMAND, STLINK_DEBUG_APIV2_INIT_AP, ap, data, sizeof(data));
 	const int result = stlink_usb_error_check(data, true);
 	if (result && stlink.ver_hw == 30) {
