@@ -656,6 +656,10 @@ static bool stlink_ap_setup(const uint8_t ap)
 {
 	uint8_t data[2];
 	DEBUG_PROBE("%s: AP %u\n", __func__, ap);
+	if (ap > 7) {
+		DEBUG_WARN("Reject ap_setup %d as Stlink V3 can not handle more than 8 APs\n", ap);
+		return false;
+	}
 	stlink_simple_request(STLINK_DEBUG_COMMAND, STLINK_DEBUG_APIV2_INIT_AP, ap, data, sizeof(data));
 	const int result = stlink_usb_error_check(data, true);
 	if (result && stlink.ver_hw == 30) {
