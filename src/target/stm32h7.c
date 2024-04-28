@@ -32,6 +32,8 @@
  *   https://www.st.com/resource/en/reference_manual/rm0455-stm32h7a37b3-and-stm32h7b0-value-line-advanced-armbased-32bit-mcus-stmicroelectronics.pdf
  * RM0468 - STM32H723/733, STM32H725/735 and STM32H730 Value line advanced Arm®-based 32-bit MCUs, Rev. 3
  *   https://www.st.com/resource/en/reference_manual/rm0468-stm32h723733-stm32h725735-and-stm32h730-value-line-advanced-armbased-32bit-mcus-stmicroelectronics.pdf
+ * RM0477 - STM32H7Rx/7Sx Arm®-based 32-bit MCUs Rev. 7
+ *   https://www.st.com/resource/en/reference_manual/rm0477-stm32h7rx7sx-armbased-32bit-mcus-stmicroelectronics.pdf
  */
 
 /*
@@ -176,6 +178,7 @@
 #define ID_STM32H74x 0x450U /* RM0433, RM0399 */
 #define ID_STM32H7Bx 0x480U /* RM0455 */
 #define ID_STM32H72x 0x483U /* RM0468 */
+#define ID_STM32H7RS 0x485U /* RM0477 */
 
 #define STM32H7_NAME_MAX_LENGTH 10U
 
@@ -268,7 +271,7 @@ bool stm32h7_probe(target_s *const target)
 {
 	const adiv5_access_port_s *const ap = cortex_ap(target);
 	/* Use the partno from the AP always to handle the difference between JTAG and SWD */
-	if (ap->partno != ID_STM32H72x && ap->partno != ID_STM32H74x && ap->partno != ID_STM32H7Bx)
+	if (ap->partno != ID_STM32H72x && ap->partno != ID_STM32H74x && ap->partno != ID_STM32H7Bx &&  ap->partno != ID_STM32H7RS)
 		return false;
 
 	/* By now it's established that this is likely an H7, but check that it's not an MP15x_CM4 with an errata in AP part code */
@@ -327,11 +330,11 @@ bool stm32h7_probe(target_s *const target)
 	stm32h7_configure_wdts(target);
 
 	/* Build the RAM map */
-	target_add_ram32(target, 0x00000000, 0x10000); /* ITCM RAM,   64 KiB */
-	target_add_ram32(target, 0x20000000, 0x20000); /* DTCM RAM,  128 KiB */
 	switch (target->part_id) {
 	case ID_STM32H72x: {
 		/* Table 6. Memory map and default device memory area attributes RM0468, pg133 */
+		target_add_ram32(target, 0x00000000, 0x10000); /* ITCM RAM,   64 KiB */
+		target_add_ram32(target, 0x20000000, 0x20000); /* DTCM RAM,  128 KiB */
 		target_add_ram32(target, 0x24000000, 0x20000); /* AXI RAM,    128 KiB */
 		target_add_ram32(target, 0x24020000, 0x30000); /* AXI RAM,    192 KiB (TCM_AXI_SHARED) */
 		target_add_ram32(target, 0x30000000, 0x8000);  /* AHB SRAM1+2, 32 KiB [16+16] contiguous */
@@ -340,6 +343,8 @@ bool stm32h7_probe(target_s *const target)
 	}
 	case ID_STM32H74x: {
 		/* Table 7. Memory map and default device memory area attributes RM0433, pg130 */
+		target_add_ram32(target, 0x00000000, 0x10000); /* ITCM RAM,   64 KiB */
+		target_add_ram32(target, 0x20000000, 0x20000); /* DTCM RAM,  128 KiB */
 		target_add_ram32(target, 0x24000000, 0x80000); /* AXI RAM,       512 KiB */
 		target_add_ram32(target, 0x30000000, 0x48000); /* AHB SRAM1+2+3, 288 KiB [128+128+32] contiguous */
 		target_add_ram32(target, 0x38000000, 0x10000); /* AHB SRAM4,      64 KiB, D3 domain */
@@ -347,9 +352,18 @@ bool stm32h7_probe(target_s *const target)
 	}
 	case ID_STM32H7Bx: {
 		/* Table 6. Memory map and default device memory area attributes RM0455, pg131 */
+		target_add_ram32(target, 0x00000000, 0x10000); /* ITCM RAM,   64 KiB */
+		target_add_ram32(target, 0x20000000, 0x20000); /* DTCM RAM,  128 KiB */
 		target_add_ram32(target, 0x24000000, 0x100000); /* AXI RAM1+2+3, 1024 KiB [256+384+384] contiguous, */
 		target_add_ram32(target, 0x30000000, 0x10000);  /* AHB SRAM1+2,   128 KiB [64+64] contiguous, */
 		target_add_ram32(target, 0x38000000, 0x8000);   /* SRD SRAM4,      32 KiB, Smart run domain */
+		break;
+	}
+	case ID_STM32H7RS : {
+		target_add_ram32(target, 0x00000000, 0x30000); /* ITCM RAM,  192 KiB */
+		target_add_ram32(target, 0x20000000, 0x30000); /* DTCM RAM,  192 KiB */
+		target_add_ram32(target, 0x24000000, 0x72000); /* AXI RAM, with different shares */
+		target_add_ram32(target, 0x30000000, 0x08000); /* SRAM1+2 */
 		break;
 	}
 	default:
@@ -407,6 +421,11 @@ bool stm32h7_probe(target_s *const target)
 		 * STM32H72xxG (H723xG/H733xG, H725xG/H735xG): 1024 KiB in 8 sectors of 128 KiB, single bank
 		 */
 		stm32h7_add_flash(target, STM32H7_FLASH_BANK1_BASE, flash_size, STM32H7_FLASH_SECTOR_SIZE);
+		break;
+	}
+	case ID_STM32H7RS: {
+		/* STM32H7RS: One 64k bank, 8k sectors */
+		stm32h7_add_flash(target, STM32H7_FLASH_BANK1_BASE, 0x10000, 0x2000U);
 		break;
 	}
 	default:
