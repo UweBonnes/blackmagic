@@ -235,6 +235,7 @@ void platform_init(void)
 	platform_timing_init();
 	blackmagic_usb_init();
 	aux_serial_init();
+	rcc_periph_clock_enable(RCC_CRC);
 	/* By default, do not drive the swd bus too fast. */
 	platform_max_frequency_set(6000000);
 }
