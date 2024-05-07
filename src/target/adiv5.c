@@ -338,6 +338,8 @@ static const char *adiv5_cid_class_string(const cid_class_e cid_class)
 /* Used to probe for a protected SAMX5X device */
 #define SAMX5X_DSU_CTRLSTAT 0x41002100U
 #define SAMX5X_STATUSB_PROT (1U << 16U)
+#define STM32_DBGMCU_CR  0xe00e1004U
+#define STM32_DBG_ENABLE 0x00200007U
 
 void adiv5_ap_ref(adiv5_access_port_s *ap)
 {
@@ -625,6 +627,15 @@ static void adiv5_component_probe(
 		DEBUG_INFO("ROM: Table BASE=0x%" PRIx32 " SYSMEM=%u, Manufacturer %03x Partno %03x\n", addr, memtype,
 			designer_code, part_number);
 
+		if (addr == 0xe00e0000 && ap->designer_code == JEP106_MANUFACTURER_STM && ap->partno == 0x485U) {
+				uint32_t cr = adiv5_mem_read32(ap, STM32_DBGMCU_CR);
+				/* Enable DEBUG on STM32H7RS*/
+				if ((cr & STM32_DBG_ENABLE) != STM32_DBG_ENABLE) {
+					cr |= STM32_DBG_ENABLE;
+					adiv5_mem_write(ap, STM32_DBGMCU_CR, &cr, sizeof(cr));
+					DEBUG_INFO("Setting DBGMCU_CR\n");
+				}
+			}
 		for (uint32_t i = 0; i < 960U; i++) {
 			adiv5_dp_error(ap->dp);
 
@@ -1118,7 +1129,7 @@ void adiv5_dp_init(adiv5_debug_port_s *const dp)
 		}
 	}
 
-	for (size_t i = 0; i < 256U && invalid_aps < 8U; ++i) {
+	for (size_t i = 0; i < 8U && invalid_aps < 4U; ++i) {
 		adiv5_access_port_s *ap = adiv5_new_ap(dp, i);
 		if (ap == NULL) {
 			/* Clear sticky errors in case scanning for this AP triggered any */
