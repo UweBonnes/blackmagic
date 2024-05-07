@@ -899,16 +899,24 @@ static void adiv5_dp_clear_sticky_errors(adiv5_debug_port_s *dp)
 		adiv5_dp_error(dp);
 }
 
-/* Keep the TRY_CATCH funkiness contained to avoid clobbering and reduce the need for volatiles */
+/* Keep the TRY_CATCH funkiness only for debuggers not capable of multidrop*/
 uint32_t adiv5_dp_read_dpidr(adiv5_debug_port_s *const dp)
 {
 	volatile uint32_t dpidr = 0;
+#if PC_HOSTED == 1
 	volatile exception_s e;
-	TRY_CATCH (e, EXCEPTION_ALL) {
-		dpidr = adiv5_dp_low_access(dp, ADIV5_LOW_READ, ADIV5_DP_DPIDR, 0U);
+	if (dp->read_no_check) {
+		dpidr =  adiv5_read_no_check(dp,ADIV5_DP_DPIDR);
+	} else {
+		TRY_CATCH (e, EXCEPTION_ALL) {
+			dpidr = adiv5_dp_low_access(dp, ADIV5_LOW_READ, ADIV5_DP_DPIDR, 0U);
+		}
+		if (e.type)
+			return 0;
 	}
-	if (e.type)
-		return 0;
+#else
+	dpidr = adiv5_read_no_check(dp,ADIV5_DP_DPIDR);
+#endif
 	return dpidr;
 }
 
