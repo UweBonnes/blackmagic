@@ -75,10 +75,24 @@ void adiv5_jtag_dp_handler(const uint8_t dev_index)
 		((designer & ADIV5_DP_DESIGNER_JEP106_CONT_MASK) << 1U) | (designer & ADIV5_DP_DESIGNER_JEP106_CODE_MASK);
 	dp->partno = (idcode & JTAG_IDCODE_PARTNO_MASK) >> JTAG_IDCODE_PARTNO_OFFSET;
 
+#if PC_HOSTED == 1
+    volatile exception_s error;
+	TRY_CATCH (error, EXCEPTION_ALL) {
+		if (dp->partno == JTAG_IDCODE_PARTNO_DPV0)
+			adiv5_dp_error(dp);
+		else
+			adiv5_dp_abort(dp, ADIV5_DP_ABORT_STKERRCLR);
+	}
+	if (error.type) {
+		DEBUG_WARN("If last return is all high: Is TDI connected?\n");
+		return;
+	}
+#else
 	if (dp->partno == JTAG_IDCODE_PARTNO_DPV0)
 		adiv5_dp_error(dp);
 	else
 		adiv5_dp_abort(dp, ADIV5_DP_ABORT_STKERRCLR);
+#endif
 	adiv5_dp_init(dp);
 }
 
