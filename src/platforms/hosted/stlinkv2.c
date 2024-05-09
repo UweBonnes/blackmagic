@@ -479,9 +479,10 @@ bool stlink_init(void)
 
 void stlink_deinit(void)
 {
-	if (stlink.apsel != STLINK_INVALID_AP)
+	if (stlink.apsel != STLINK_INVALID_AP) {
 		stlink_ap_cleanup();
-	stlink_simple_query(STLINK_DEBUG_COMMAND, STLINK_DEBUG_EXIT, NULL, 0);
+		stlink_simple_query(STLINK_DEBUG_COMMAND, STLINK_DEBUG_EXIT, NULL, 0);
+	}
 }
 
 void stlink_nrst_set_val(bool assert)
