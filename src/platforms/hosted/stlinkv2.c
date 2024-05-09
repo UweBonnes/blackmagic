@@ -75,7 +75,7 @@ typedef struct stlink {
 #define STLINK_V2_MAX_SWD_CLOCK_FREQ  (3600U * 1000U)
 #define STLINK_V2_MIN_SWD_CLOCK_FREQ  (4505U)
 
-#define STLINK_INVALID_AP 0xffffU
+#define STLINK_AP_MAX 8U
 
 static stlink_s stlink;
 
@@ -471,7 +471,7 @@ bool stlink_init(void)
 		DEBUG_WARN("ST-Link board was in DFU mode. Restart\n");
 		return false;
 	}
-	stlink.apsel = STLINK_INVALID_AP;
+	stlink.apsel = STLINK_DEBUG_PORT;
 	stlink_reset_adaptor();
 	stlink_ap_cleanup();
 	return true;
@@ -479,7 +479,7 @@ bool stlink_init(void)
 
 void stlink_deinit(void)
 {
-	if (stlink.apsel != STLINK_INVALID_AP) {
+	if (stlink.apsel != STLINK_DEBUG_PORT) {
 		stlink_ap_cleanup();
 		stlink_simple_query(STLINK_DEBUG_COMMAND, STLINK_DEBUG_EXIT, NULL, 0);
 	}
@@ -546,7 +546,7 @@ void stlink_dp_abort(adiv5_debug_port_s *dp, uint32_t abort)
 static bool stlink_ensure_ap(const uint16_t apsel)
 {
 	if (apsel != STLINK_DEBUG_PORT && apsel != stlink.apsel) {
-		if (stlink.apsel != STLINK_INVALID_AP) {
+		if (stlink.apsel != STLINK_DEBUG_PORT) {
 			if (!stlink_ap_cleanup())
 				return false;
 		}
@@ -649,7 +649,7 @@ static bool stlink_ap_setup(const uint8_t ap)
 {
 	uint8_t data[2];
 	DEBUG_PROBE("%s: AP %u\n", __func__, ap);
-	if (ap > 8) {
+	if (ap > STLINK_AP_MAX) {
 		DEBUG_WARN("Reject ap_setup %d as Stlink can only handle AP 0..8\n", ap);
 		return false;
 	}
@@ -668,9 +668,11 @@ static bool stlink_ap_setup(const uint8_t ap)
 static bool stlink_ap_cleanup(void)
 {
 	uint8_t data[2];
-	stlink_simple_request(STLINK_DEBUG_COMMAND, STLINK_DEBUG_APIV2_CLOSE_AP_DBG, stlink.apsel, data, sizeof(data));
+	if (stlink.apsel < STLINK_AP_MAX) {
+		stlink_simple_request(STLINK_DEBUG_COMMAND, STLINK_DEBUG_APIV2_CLOSE_AP_DBG, stlink.apsel, data, sizeof(data));
+	}
 	DEBUG_PROBE("%s: AP %u\n", __func__, stlink.apsel);
-	stlink.apsel = STLINK_INVALID_AP;
+	stlink.apsel = STLINK_DEBUG_PORT;
 	return stlink_usb_error_check(data, true) == STLINK_ERROR_OK;
 }
 
