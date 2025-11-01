@@ -142,6 +142,7 @@
 #define STM32L4_FLAG_DUAL_BANK 0x80U
 
 /* TODO: add block size constants for other MCUs */
+#define STM32U3_FLASH_BLOCK_SIZE 0x1000U
 #define STM32U5_FLASH_BLOCK_SIZE 0x2000U
 
 /*
@@ -206,6 +207,7 @@
  * NB: For the WB10CC, core2's AP requires using DBGMCU_IDCODE for identification.
  * The outer ROM table for this core carries the ARM core ID, not the part ID.
  */
+#define ID_STM32U375 0x454U /* STM32U375/385 */
 #define ID_STM32U535 0x455U /* STM32U535/545 */
 #define ID_STM32U5Fx 0x476U /* STM32U5Fx/5Gx */
 #define ID_STM32U59x 0x481U /* STM32U59x/5Ax */
@@ -239,6 +241,7 @@ typedef enum stm32l4_family {
 	STM32L4_FAMILY_WBxx,
 	STM32L4_FAMILY_G4xx,
 	STM32L4_FAMILY_L55x,
+	STM32L4_FAMILY_U3xx,
 	STM32L4_FAMILY_U5xx,
 	STM32L4_FAMILY_WLxx,
 } stm32l4_family_e;
@@ -413,9 +416,18 @@ static stm32l4_device_info_s const stm32l4_device_info[] = {
 		.designator = "STM32L55",
 		.sram1 = 192U, /* SRAM1 and SRAM2 are mapped continuous */
 		.sram2 = 64U,
-		.flags = 2U,
+		.flags = 2U | STM32L4_FLAG_DUAL_BANK,
 		.flash_regs_map = stm32l5_flash_regs_map,
 		.flash_size_reg = STM32L5_FLASH_SIZE_REG,
+	},
+	{
+		.device_id = ID_STM32U375,
+		.family = STM32L4_FAMILY_U3xx,
+		.designator = "STM32U375/385",
+		.sram1 = 192U + 64U, /* SRAM1+2 continuous */
+		.flags = 2U | STM32L4_FLAG_DUAL_BANK,
+		.flash_regs_map = stm32l5_flash_regs_map,
+		.flash_size_reg = STM32U5_FLASH_SIZE_REG,
 	},
 	{
 		.device_id = ID_STM32U535,
@@ -652,7 +664,7 @@ static bool stm32l4_configure_dbgmcu(target_s *const target, const stm32l4_devic
 	 * Now we have a stable debug environment, make sure the WDTs can't bonk the processor out from under us,
 	 * then Reconfigure the config register to prevent WFI/WFE from cutting debug access
 	 */
-	if (priv->device->family == STM32L4_FAMILY_L55x || priv->device->family == STM32L4_FAMILY_U5xx) {
+	if (priv->device->family == STM32L4_FAMILY_L55x || priv->device->family == STM32L4_FAMILY_U3xx || priv->device->family == STM32L4_FAMILY_U5xx) {
 		target_mem32_write32(target, STM32L5_DBGMCU_APB1FREEZE1,
 			target_mem32_read32(target, STM32L5_DBGMCU_APB1FREEZE1) | STM32L4_DBGMCU_APB1FREEZE1_IWDG |
 				STM32L4_DBGMCU_APB1FREEZE1_WWDG);
@@ -674,7 +686,7 @@ static void stm32l4_deconfigure_dbgmcu(target_s *const target)
 {
 	const stm32l4_priv_s *const priv = (stm32l4_priv_s *)target->target_storage;
 	/* Reverse all changes to the DBGMCU control and freeze registers */
-	if (priv->device->family == STM32L4_FAMILY_L55x || priv->device->family == STM32L4_FAMILY_U5xx) {
+	if (priv->device->family == STM32L4_FAMILY_L55x || priv->device->family == STM32L4_FAMILY_U3xx || priv->device->family == STM32L4_FAMILY_U5xx) {
 		target_mem32_write32(target, STM32L5_DBGMCU_APB1FREEZE1,
 			target_mem32_read32(target, STM32L5_DBGMCU_APB1FREEZE1) &
 				~(STM32L4_DBGMCU_APB1FREEZE1_IWDG | STM32L4_DBGMCU_APB1FREEZE1_WWDG));
@@ -768,7 +780,7 @@ static bool stm32l4_attach(target_s *const target)
 	/* Free any previously built memory map */
 	target_mem_map_free(target);
 	/* And rebuild the RAM map */
-	if (device->family == STM32L4_FAMILY_L55x || device->family == STM32L4_FAMILY_U5xx)
+	if (device->family == STM32L4_FAMILY_L55x || device->family == STM32L4_FAMILY_U3xx || device->family == STM32L4_FAMILY_U5xx)
 		target_add_ram32(target, 0x0a000000, (device->sram1 + device->sram2) * 1024U);
 	else
 		target_add_ram32(target, 0x10000000, device->sram2 * 1024U);
@@ -833,6 +845,11 @@ static bool stm32l4_attach(target_s *const target)
 				stm32l4_add_flash(target, STM32L4_FLASH_BANK1_BASE, bank_len, STM32U5_FLASH_BLOCK_SIZE,
 					STM32L4_FLASH_BANK1_BASE + bank_len);
 				stm32l4_add_flash(target, STM32L4_FLASH_BANK1_BASE + bank_len, bank_len, STM32U5_FLASH_BLOCK_SIZE,
+					STM32L4_FLASH_BANK1_BASE + bank_len);
+			} else if (device->family == STM32L4_FAMILY_U3xx) {
+				stm32l4_add_flash(target, STM32L4_FLASH_BANK1_BASE, bank_len, STM32U3_FLASH_BLOCK_SIZE,
+					STM32L4_FLASH_BANK1_BASE + bank_len);
+				stm32l4_add_flash(target, STM32L4_FLASH_BANK1_BASE + bank_len, bank_len, STM32U3_FLASH_BLOCK_SIZE,
 					STM32L4_FLASH_BANK1_BASE + bank_len);
 			} else {
 				stm32l4_add_flash(
